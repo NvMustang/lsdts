@@ -8,7 +8,7 @@ const App = () => {
   const token = isInvite ? decodeURIComponent(path.slice(3)) : "";
 
   return (
-    <div className="app-shell">
+    <div className="appShell">
       {isInvite ? <Invite token={token} /> : <Create />}
     </div>
   );

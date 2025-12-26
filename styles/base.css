@@ -1,13 +1,13 @@
 :root {
-  --bg: #f7f7fb;
-  --card: #ffffff;
+  --bg: #f4f0e7;
+  --card: #fffdf7;
   --text: #1f2933;
-  --muted: #4b5563;
+  --muted: #5b6472;
   --primary: #1f7ae0;
   --primary-strong: #1662b8;
-  --border: #e5e7eb;
-  --radius: 10px;
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+  --border: #e6ddcf;
+  --radius: 12px;
+  --shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
   --spacing: 14px;
   --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
@@ -19,8 +19,9 @@
 body {
   margin: 0;
   font-family: var(--font);
-  background: var(--bg);
+  background: radial-gradient(circle at 10% 20%, #f1e9dc 0%, #f7f2e9 38%, #fdfbf7 72%);
   color: var(--text);
+  min-height: 100vh;
 }
 
 a {
