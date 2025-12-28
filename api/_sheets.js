@@ -2,8 +2,8 @@ import crypto from "node:crypto";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 
-let cachedAccessToken = null;
-let cachedAccessTokenExpMs = 0;
+// Cache par scope pour éviter les conflits entre SCOPE_RO et SCOPE_RW
+const tokenCache = new Map(); // scope -> { token, expMs }
 
 function base64UrlEncode(buf) {
   return Buffer.from(buf)
@@ -88,7 +88,8 @@ async function fetchToken({ scope, delegatedEmail }) {
 
 export async function getAccessToken(scope) {
   const nowMs = Date.now();
-  if (cachedAccessToken && nowMs < cachedAccessTokenExpMs - 10_000) return cachedAccessToken;
+  const cached = tokenCache.get(scope);
+  if (cached && nowMs < cached.expMs - 10_000) return cached.token;
 
   const delegated = process.env.GOOGLE_DELEGATED_USER_EMAIL;
 
@@ -108,9 +109,10 @@ export async function getAccessToken(scope) {
     data = await fetchToken({ scope, delegatedEmail: null });
   }
 
-  cachedAccessToken = data.access_token;
-  cachedAccessTokenExpMs = nowMs + (Number(data.expires_in || 0) * 1000 || 0);
-  return cachedAccessToken;
+  const token = data.access_token;
+  const expMs = nowMs + (Number(data.expires_in || 0) * 1000 || 0);
+  tokenCache.set(scope, { token, expMs });
+  return token;
 }
 
 export function json(res, statusCode, payload) {
