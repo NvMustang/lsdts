@@ -541,7 +541,8 @@ function InviteContainer({ inviteId, urlParams }) {
   const maybe = invitation.counts?.maybe;
 
   // Fonctions orga uniquement
-  const shareUrl = window.location.href;
+  // Utiliser /i/{inviteId} pour que les Open Graph tags soient disponibles
+  const shareUrl = buildShareUrl(inviteId);
   const recreate = () => {
     const url = new URL(window.location.origin);
     url.searchParams.set('t', encodeURIComponent(invite.title));
