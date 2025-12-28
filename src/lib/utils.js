@@ -189,13 +189,14 @@ export function getDefaultWhenDate() {
     defaultDate.setMinutes(0);
   }
   
-  // S'assurer que l'heure est entre 6h et 23h
-  const hour = defaultDate.getHours();
-  if (hour < 6) {
-    defaultDate.setHours(6, 0, 0, 0);
-  } else if (hour > 23 || (hour === 23 && defaultDate.getMinutes() > 0)) {
-    defaultDate.setDate(defaultDate.getDate() + 1);
-    defaultDate.setHours(6, 0, 0, 0);
+  // Vérifier si la date dépasse demain 23:45
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(23, 45, 0, 0);
+  
+  if (defaultDate > tomorrow) {
+    // Si la date dépasse demain 23:45, la limiter à demain 23:45
+    defaultDate.setTime(tomorrow.getTime());
   }
   
   // S'assurer que la date est dans la plage valide (aujourd'hui à J+7)

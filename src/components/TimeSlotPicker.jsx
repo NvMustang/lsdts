@@ -71,9 +71,9 @@ export default function TimeSlotPicker({ value, onChange }) {
     };
   }, []);
   
-  // Heures disponibles de 6h à 23h
+  // Heures disponibles de 0h à 23h
   const hours = useMemo(() => {
-    const allHours = Array.from({ length: 18 }, (_, i) => i + 6); // 6h à 23h
+    const allHours = Array.from({ length: 24 }, (_, i) => i); // 0h à 23h
     
     if (isTomorrow) {
       // Demain : jusqu'à 23:45, donc toutes les heures jusqu'à 23h
@@ -83,7 +83,8 @@ export default function TimeSlotPicker({ value, onChange }) {
     if (isToday) {
       // Aujourd'hui : à partir de "now arrondi à +15min"
       // Si l'heure arrondie dépasse 23h, pas d'heures disponibles aujourd'hui
-      if (roundedHour > 23) return [];
+      // (on passera automatiquement à demain)
+      if (roundedHour >= 24) return [];
       
       // Filtrer les heures : garder celles >= à l'heure arrondie
       return allHours.filter(h => h >= roundedHour);
