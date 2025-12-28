@@ -132,9 +132,9 @@ function CreateView({ urlParams }) {
     const whenAtValue = new Date(whenDateObj).toISOString();
     const confirmByValue = confirmationAt ? confirmationAt.toISOString() : new Date(whenDateObj).toISOString();
     
-    // Construire l'URL directement vers le dashboard (évite la page intermédiaire /i/id)
-    const url = new URL(window.location.origin);
-    url.searchParams.set('inviteId', id);
+    // Construire l'URL en premier pour rediriger le plus tôt possible
+    const shareUrl = buildShareUrl(id);
+    const url = new URL(shareUrl);
     url.searchParams.set('t', encodeURIComponent(titleValue));
     url.searchParams.set('w', whenAtValue);
     url.searchParams.set('c', confirmByValue);
@@ -500,8 +500,7 @@ function InviteContainer({ inviteId, urlParams }) {
   const maybe = invitation.counts?.maybe;
 
   // Fonctions orga uniquement
-  // Utiliser /i/${inviteId} pour avoir les meta tags OG (aperçu dans Messenger, etc.)
-  const shareUrl = buildShareUrl(inviteId);
+  const shareUrl = window.location.href;
   const recreate = () => {
     const url = new URL(window.location.origin);
     url.searchParams.set('t', encodeURIComponent(invite.title));

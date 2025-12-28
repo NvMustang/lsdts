@@ -32,6 +32,7 @@ function formatConfirm(invite) {
   return `${date} ${time}`;
 }
 
+
 export default async function handler(req, res) {
   const inviteId = typeof req.query?.inviteId === "string" ? req.query.inviteId : "";
   if (!inviteId) return text(res, 400, "Missing inviteId");

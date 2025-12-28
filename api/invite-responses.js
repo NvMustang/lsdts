@@ -153,7 +153,10 @@ export default async function handler(req, res) {
       my: anonDeviceId ? { choice: myChoice, name: myName } : null,
     });
   } catch (e) {
-    return serverError(res, "Get responses failed", e instanceof Error ? e.message : String(e));
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    const errorStack = e instanceof Error ? e.stack : undefined;
+    console.error("Get responses error:", errorMessage, errorStack);
+    return serverError(res, "Get responses failed", errorMessage);
   }
 }
 
