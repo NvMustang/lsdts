@@ -370,11 +370,8 @@ function InviteContainer({ inviteId, urlParams }) {
   // Props du RÔLE (dérivé)
   const orga = localStorage.getItem(`lsdts:organizer:${inviteId}`) === "1";
 
-  // Ref pour savoir si c'est le premier chargement (pour le retry orga)
-  const isFirstLoadRef = React.useRef(true);
-
-  // Fonction pour charger les réponses (réutilisable pour refresh automatique)
-  const loadResponses = React.useCallback(async (isAutoRefresh = false) => {
+  // useEffect uniquement pour enrichir avec le backend
+  useEffect(() => {
     if (!urlInvite) {
       setError(true);
       return;
@@ -382,81 +379,55 @@ function InviteContainer({ inviteId, urlParams }) {
 
     // En mode orga, attendre que le POST soit terminé avant de faire le GET
     // On fait un retry jusqu'à ce que l'organisateur soit compté dans les participants
-    // (seulement au premier chargement, pas lors des refresh automatiques)
-    const maxRetries = isAutoRefresh ? 1 : 10; // Refresh auto : pas de retry
-    const retryDelay = 300; // 300ms entre chaque tentative
-    
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        const responses = await getInviteResponses(inviteId, anonDeviceId, orga, urlInvite);
-        
-        // En mode orga, vérifier que l'organisateur est compté (yes count >= 1)
-        // car l'organisateur doit avoir une réponse "YES" créée par le POST
-        // (seulement au premier chargement, pas lors des refresh)
-        if (orga && isFirstLoadRef.current && attempt === 0) {
-          const yesCount = responses.counts?.yes || 0;
+    const loadResponses = async () => {
+      const maxRetries = 10;
+      const retryDelay = 300; // 300ms entre chaque tentative
+      
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          const responses = await getInviteResponses(inviteId, anonDeviceId, orga, urlInvite);
           
-          // Si l'organisateur n'est pas encore compté et qu'on peut encore réessayer
-          if (yesCount < 1 && attempt < maxRetries - 1) {
-            await new Promise(resolve => setTimeout(resolve, retryDelay));
-            continue;
+          // En mode orga, vérifier que l'organisateur est compté (yes count >= 1)
+          // car l'organisateur doit avoir une réponse "YES" créée par le POST
+          if (orga) {
+            const yesCount = responses.counts?.yes || 0;
+            
+            // Si l'organisateur n'est pas encore compté et qu'on peut encore réessayer
+            if (yesCount < 1 && attempt < maxRetries - 1) {
+              await new Promise(resolve => setTimeout(resolve, retryDelay));
+              continue;
+            }
           }
-        }
-        
-        setInvitation((prev) => ({
-          ...prev,
-          ...responses,
-          invite: {
-            ...prev?.invite,
-            ...responses.invite,
-            // capacity_max vient toujours de l'URL (paramètre m), jamais du backend
-            capacity_max: prev?.invite?.capacity_max,
-          },
-        }));
-        setStatusLoaded(true);
-        isFirstLoadRef.current = false; // Marquer que le premier chargement est fait
-        return; // Succès, on sort de la boucle
-      } catch (e) {
-        // Si c'est la dernière tentative, on affiche l'erreur seulement au premier chargement
-        if (attempt === maxRetries - 1) {
-          // Ne pas mettre setError(true) lors des refresh automatiques pour éviter de casser l'UI
-          if (!isAutoRefresh) {
+          
+          setInvitation((prev) => ({
+            ...prev,
+            ...responses,
+            invite: {
+              ...prev?.invite,
+              ...responses.invite,
+              // capacity_max vient toujours de l'URL (paramètre m), jamais du backend
+              capacity_max: prev?.invite?.capacity_max,
+            },
+          }));
+          setStatusLoaded(true);
+          return; // Succès, on sort de la boucle
+        } catch (e) {
+          // Si c'est la dernière tentative, on affiche l'erreur
+          if (attempt === maxRetries - 1) {
             setError(true);
+            return;
           }
-          return;
+          // Sinon, on attend avant de réessayer
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
         }
-        // Sinon, on attend avant de réessayer
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
       }
-    }
-  }, [inviteId, anonDeviceId, orga, urlInvite]);
-
-  // useEffect pour charger initialement et rafraîchir toutes les 30 secondes
-  useEffect(() => {
-    if (!urlInvite) {
-      setError(true);
-      return;
-    }
-
-    // Réinitialiser le ref pour le premier chargement de cette invitation
-    isFirstLoadRef.current = true;
-
-    // Chargement initial
-    loadResponses(false);
-
-    // Enregistrer la vue (non bloquant, seulement au premier chargement)
-    recordView(inviteId, anonDeviceId).catch(() => {});
-
-    // Rafraîchissement automatique toutes les 30 secondes
-    const intervalId = setInterval(() => {
-      loadResponses(true); // true = refresh automatique
-    }, 30000); // 30 secondes
-
-    // Nettoyer l'intervalle au démontage
-    return () => {
-      clearInterval(intervalId);
     };
-  }, [loadResponses, inviteId, anonDeviceId, urlInvite]);
+
+    loadResponses();
+
+    // Enregistrer la vue (non bloquant)
+    recordView(inviteId, anonDeviceId).catch(() => {});
+  }, []);
 
   const doRespond = async (choice) => {
     const n = normalizeName(guestName);
