@@ -15,10 +15,22 @@ async function requestJson(path, { method, body, query }) {
     }
   }
 
+  console.log(`[DEBUG] requestJson ${method} ${path}`, {
+    url: url.toString(),
+    query,
+    hasBody: !!body,
+  });
+
   const resp = await fetch(url.toString(), {
     method,
     headers: body ? { "content-type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
+  });
+
+  console.log(`[DEBUG] requestJson response`, {
+    status: resp.status,
+    statusText: resp.statusText,
+    ok: resp.ok,
   });
 
   const data = await readJsonSafe(resp);
@@ -28,9 +40,19 @@ async function requestJson(path, { method, body, query }) {
     err.code = data?.error || resp.status;
     err.status = resp.status;
     err.details = data?.details || null;
+    console.error(`[DEBUG] requestJson error:`, {
+      message,
+      status: resp.status,
+      data,
+      url: url.toString(),
+    });
     throw err;
   }
-  if (!data) throw new Error("Réponse serveur invalide.");
+  if (!data) {
+    console.error(`[DEBUG] requestJson - invalid response data`, { url: url.toString() });
+    throw new Error("Réponse serveur invalide.");
+  }
+  console.log(`[DEBUG] requestJson success`, { data });
   return data;
 }
 
@@ -58,12 +80,12 @@ export async function getInviteResponses(inviteId, anonDeviceId, isOrganizer = f
     anon_device_id: anonDeviceId || undefined,
     is_organizer: isOrganizer ? "1" : undefined,
   };
-  // Passer les infos de base depuis l'URL (guests) ou le cache (organisateur) pour éviter de charger TAB_INVITES
+  // Passer les infos de base depuis l'URL pour éviter de charger TAB_INVITES
   if (basicInfo) {
     query.confirm_by = basicInfo.confirm_by;
     query.capacity_max = basicInfo.capacity_max !== null ? String(basicInfo.capacity_max) : "";
-    // Pour l'organisateur, passer aussi title et when_at pour l'affichage
-    if (isOrganizer && basicInfo.title && basicInfo.when_at) {
+    // Passer title et when_at pour tous les utilisateurs (disponibles dans l'URL)
+    if (basicInfo.title && basicInfo.when_at) {
       query.title = basicInfo.title;
       query.when_at = basicInfo.when_at;
       query.when_has_time = basicInfo.when_has_time ? "1" : "0";

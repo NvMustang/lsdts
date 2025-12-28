@@ -1,12 +1,11 @@
 import { getAccessToken, json } from "./_sheets.js";
 import {
-  TAB_INVITES,
   TAB_RESPONSES,
   TAB_VIEWS,
   ensureMvpTabs,
   readAll,
 } from "./_mvpStore.js";
-import { badRequest, serverError, rowsToObjects, findInviteInRows } from "./_utils.js";
+import { badRequest, serverError, rowsToObjects } from "./_utils.js";
 import { computeStatus, convertMaybeToNoIfExpired } from "./_inviteUtils.js";
 
 const SCOPE_RO = "https://www.googleapis.com/auth/spreadsheets.readonly";
@@ -21,59 +20,33 @@ export default async function handler(req, res) {
   if (!inviteId) return badRequest(res, "Missing inviteId");
 
   const isOrganizer = req.query?.is_organizer === "1";
-  // On peut avoir les infos de base dans l'URL (guests et organisateur) ou depuis le cache (organisateur)
-  // Dans ce cas, on n'a pas besoin de charger TAB_INVITES
-  const hasBasicInfo = req.query?.confirm_by && req.query?.capacity_max !== undefined;
 
   try {
     await getAccessToken(SCOPE_RO);
     await ensureMvpTabs();
 
-    // Pour l'organisateur : ne jamais charger TAB_INVITES (infos toujours disponibles via cache ou URL)
-    // Pour les guests : charger uniquement responses si infos dans l'URL, sinon invites + responses
-    const promises = [];
-    let invitesRows = null;
-    let responsesRows = null;
-    let viewsRows = null;
-
-    if (hasBasicInfo || isOrganizer) {
-      // Avec infos de base (URL ou cache) OU organisateur : seulement responses (+ views pour organisateur)
-      // L'organisateur ne charge jamais TAB_INVITES car les infos sont toujours disponibles
-      promises.push(readAll(TAB_RESPONSES, 10000));
-      if (isOrganizer) {
-        promises.push(readAll(TAB_VIEWS, 10000));
-      }
-      const results = await Promise.all(promises);
-      responsesRows = results[0];
-      viewsRows = isOrganizer ? results[1] : null;
-    } else {
-      // Guest sans infos dans l'URL : charger invites + responses
-      promises.push(readAll(TAB_INVITES, 5000));
-      promises.push(readAll(TAB_RESPONSES, 10000));
-      const results = await Promise.all(promises);
-      invitesRows = results[0];
-      responsesRows = results[1];
+    // Ne jamais charger TAB_INVITES : toutes les infos sont disponibles dans l'URL
+    const promises = [readAll(TAB_RESPONSES, 10000)];
+    if (isOrganizer) {
+      promises.push(readAll(TAB_VIEWS, 10000));
     }
+    const results = await Promise.all(promises);
+    const responsesRows = results[0];
+    const viewsRows = isOrganizer ? results[1] : null;
 
-    let invite = null;
-    if (invitesRows) {
-      invite = findInviteInRows(invitesRows, inviteId);
-      if (!invite) return json(res, 404, { error: "Not found" });
-    } else {
-      // Construire invite depuis les paramètres de l'URL ou du cache
-      const confirmBy = req.query.confirm_by;
-      const capacityMax = req.query.capacity_max === "" ? null : (req.query.capacity_max ? Number.parseInt(req.query.capacity_max, 10) : null);
-      invite = {
-        id: inviteId,
-        confirm_by: confirmBy,
-        capacity_max: capacityMax,
-      };
-      // Pour l'organisateur, on peut aussi avoir title et when_at depuis le cache
-      if (isOrganizer && req.query.title && req.query.when_at) {
-        invite.title = req.query.title;
-        invite.when_at = req.query.when_at;
-        invite.when_has_time = req.query.when_has_time === "1";
-      }
+    // Construire invite depuis les paramètres de l'URL (toujours disponibles)
+    const confirmBy = req.query.confirm_by;
+    const capacityMax = req.query.capacity_max === "" ? null : (req.query.capacity_max ? Number.parseInt(req.query.capacity_max, 10) : null);
+    const invite = {
+      id: inviteId,
+      confirm_by: confirmBy,
+      capacity_max: capacityMax,
+    };
+    // title et when_at sont disponibles dans l'URL pour tous les utilisateurs
+    if (req.query.title && req.query.when_at) {
+      invite.title = req.query.title;
+      invite.when_at = req.query.when_at;
+      invite.when_has_time = req.query.when_has_time === "1";
     }
 
     const { idx: rIdx, rows: rData } = rowsToObjects(responsesRows);
@@ -153,10 +126,7 @@ export default async function handler(req, res) {
       my: anonDeviceId ? { choice: myChoice, name: myName } : null,
     });
   } catch (e) {
-    const errorMessage = e instanceof Error ? e.message : String(e);
-    const errorStack = e instanceof Error ? e.stack : undefined;
-    console.error("Get responses error:", errorMessage, errorStack);
-    return serverError(res, "Get responses failed", errorMessage);
+    return serverError(res, "Get responses failed", e instanceof Error ? e.message : String(e));
   }
 }
 
