@@ -51,18 +51,19 @@ export default async function handler(req, res) {
     // Format avec sauts de ligne pour affichage vertical dans l'aperçu
     let descriptionParts = [];
     if (whenText) {
-      descriptionParts.push(`📅 ${whenText}`);
+      descriptionParts.push(whenText);
     }
     if (confirmText) {
-      descriptionParts.push(`⏰ Confirmation avant ${confirmText}`);
+      descriptionParts.push(`Confirmation avant ${confirmText}`);
     }
     if (invite?.capacity_max !== null && invite?.capacity_max !== undefined) {
-      descriptionParts.push(`👥 Capacité : ${invite.capacity_max} personnes`);
+      descriptionParts.push(`Capacité : ${invite.capacity_max} personnes`);
     }
+    // Mettre "Répondre ici" en évidence avec emoji pour inciter
     if (descriptionParts.length === 0) {
-      descriptionParts.push("→ Répondre ici");
+      descriptionParts.push("👉 RÉPONDRE ICI");
     } else {
-      descriptionParts.push("→ Répondre ici");
+      descriptionParts.push("👉 RÉPONDRE ICI");
     }
     // Utiliser des sauts de ligne pour affichage vertical (certaines plateformes les respectent)
     const description = descriptionParts.join("\n");
