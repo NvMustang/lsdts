@@ -48,22 +48,25 @@ export default async function handler(req, res) {
     const confirmText = invite ? formatConfirm(invite) : "";
     
     // Construire une description riche avec toutes les données immuables
+    // Format avec sauts de ligne pour affichage vertical dans l'aperçu
     let descriptionParts = [];
     if (whenText) {
-      descriptionParts.push(`📅 ${whenText}`);
+      descriptionParts.push(whenText);
     }
     if (confirmText) {
-      descriptionParts.push(`⏰ Confirmation avant ${confirmText}`);
+      descriptionParts.push(`Confirmation avant ${confirmText}`);
     }
     if (invite?.capacity_max !== null && invite?.capacity_max !== undefined) {
-      descriptionParts.push(`👥 Capacité : ${invite.capacity_max} personnes`);
+      descriptionParts.push(`Capacité : ${invite.capacity_max} personnes`);
     }
+    // Mettre "Répondre ici" en évidence avec emoji pour inciter
     if (descriptionParts.length === 0) {
-      descriptionParts.push("→ Répondre ici");
+      descriptionParts.push("👉 RÉPONDRE ICI");
     } else {
-      descriptionParts.push("→ Répondre ici");
+      descriptionParts.push("👉 RÉPONDRE ICI");
     }
-    const description = descriptionParts.join(" • ");
+    // Utiliser des sauts de ligne pour affichage vertical (certaines plateformes les respectent)
+    const description = descriptionParts.join("\n");
 
     // Inclure les infos dans l'URL pour éviter le chargement initial côté guest
     const urlParams = new URLSearchParams();
@@ -98,10 +101,19 @@ export default async function handler(req, res) {
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="${escapeHtml(title)}" />
     <meta name="twitter:description" content="${escapeHtml(description)}" />
-    <meta http-equiv="refresh" content="0; url=${redirectUrl}" />
+    <meta http-equiv="refresh" content="0; url=${escapeHtml(redirectUrl)}" />
+    <style>
+      body { 
+        margin: 0; 
+        padding: 0; 
+        background: radial-gradient(circle at 10% 20%, #f1e9dc 0%, #f7f2e9 38%, #fdfbf7 72%);
+        min-height: 100vh; 
+        font-family: system-ui, -apple-system, sans-serif; 
+      }
+    </style>
   </head>
   <body>
-    <a href="${redirectUrl}">Répondre ici</a>
+    <script>window.location.replace("${escapeHtml(redirectUrl)}");</script>
   </body>
 </html>`;
 
