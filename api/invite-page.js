@@ -101,7 +101,7 @@ export default async function handler(req, res) {
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="${escapeHtml(title)}" />
     <meta name="twitter:description" content="${escapeHtml(description)}" />
-    <meta http-equiv="refresh" content="0; url=${escapeHtml(redirectUrl)}" />
+    <meta http-equiv="refresh" content="0; url=${redirectUrl}" />
     <style>
       body { 
         margin: 0; 
@@ -113,7 +113,6 @@ export default async function handler(req, res) {
     </style>
   </head>
   <body>
-    <script>window.location.replace("${escapeHtml(redirectUrl)}");</script>
   </body>
 </html>`;
 
