@@ -375,16 +375,7 @@ function InviteContainer({ inviteId, urlParams }) {
 
   // useEffect uniquement pour enrichir avec le backend
   useEffect(() => {
-    console.log("[DEBUG] InviteContainer useEffect", {
-      inviteId,
-      urlParams: { t, w, c, m },
-      urlInvite,
-      orga,
-      anonDeviceId,
-    });
-
     if (!urlInvite) {
-      console.error("[DEBUG] urlInvite is null - missing required params", { t, w, c });
       setError(true);
       return;
     }
@@ -395,29 +386,22 @@ function InviteContainer({ inviteId, urlParams }) {
       const maxRetries = 10;
       const retryDelay = 300; // 300ms entre chaque tentative
       
-      console.log("[DEBUG] Starting loadResponses", { inviteId, orga, urlInvite });
-      
       for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
-          console.log(`[DEBUG] Attempt ${attempt + 1}/${maxRetries} - calling getInviteResponses`);
           const responses = await getInviteResponses(inviteId, anonDeviceId, orga, urlInvite);
-          console.log(`[DEBUG] Attempt ${attempt + 1} - success`, { responses });
           
           // En mode orga, vérifier que l'organisateur est compté (yes count >= 1)
           // car l'organisateur doit avoir une réponse "YES" créée par le POST
           if (orga) {
             const yesCount = responses.counts?.yes || 0;
-            console.log(`[DEBUG] Organizer check - yesCount: ${yesCount}`);
             
             // Si l'organisateur n'est pas encore compté et qu'on peut encore réessayer
             if (yesCount < 1 && attempt < maxRetries - 1) {
-              console.log(`[DEBUG] Organizer not counted yet, retrying in ${retryDelay}ms`);
               await new Promise(resolve => setTimeout(resolve, retryDelay));
               continue;
             }
           }
           
-          console.log("[DEBUG] Setting invitation state");
           setInvitation((prev) => ({
             ...prev,
             ...responses,
@@ -429,26 +413,14 @@ function InviteContainer({ inviteId, urlParams }) {
             },
           }));
           setStatusLoaded(true);
-          console.log("[DEBUG] loadResponses completed successfully");
           return; // Succès, on sort de la boucle
         } catch (e) {
-          console.error(`[DEBUG] Attempt ${attempt + 1} failed:`, {
-            error: e,
-            message: e.message,
-            status: e.status,
-            code: e.code,
-            details: e.details,
-            stack: e.stack,
-          });
-          
           // Si c'est la dernière tentative, on affiche l'erreur
           if (attempt === maxRetries - 1) {
-            console.error("[DEBUG] All retries exhausted, setting error state");
             setError(true);
             return;
           }
           // Sinon, on attend avant de réessayer
-          console.log(`[DEBUG] Retrying in ${retryDelay}ms...`);
           await new Promise(resolve => setTimeout(resolve, retryDelay));
         }
       }
@@ -464,17 +436,14 @@ function InviteContainer({ inviteId, urlParams }) {
   const doRespond = async (choice) => {
     const n = normalizeName(guestName);
     if (!n) {
-      console.warn("[DEBUG] doRespond - invalid name", { guestName, normalized: n });
       return;
     }
     
-    console.log("[DEBUG] doRespond", { inviteId, anonDeviceId, name: n, choice });
     setStatusLoaded(false);
     saveUserName(n);
 
     try {
       await respond(inviteId, anonDeviceId, n, choice);
-      console.log("[DEBUG] doRespond - success");
       
       // Mise à jour locale optimiste
       setInvitation((prev) => {
@@ -498,14 +467,6 @@ function InviteContainer({ inviteId, urlParams }) {
       });
       setStatusLoaded(true);
     } catch (e) {
-      console.error("[DEBUG] doRespond failed:", {
-        error: e,
-        message: e.message,
-        status: e.status,
-        code: e.code,
-        details: e.details,
-        stack: e.stack,
-      });
       setError(true);
     }
   };

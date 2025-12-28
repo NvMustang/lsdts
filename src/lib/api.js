@@ -15,22 +15,10 @@ async function requestJson(path, { method, body, query }) {
     }
   }
 
-  console.log(`[DEBUG] requestJson ${method} ${path}`, {
-    url: url.toString(),
-    query,
-    hasBody: !!body,
-  });
-
   const resp = await fetch(url.toString(), {
     method,
     headers: body ? { "content-type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
-  });
-
-  console.log(`[DEBUG] requestJson response`, {
-    status: resp.status,
-    statusText: resp.statusText,
-    ok: resp.ok,
   });
 
   const data = await readJsonSafe(resp);
@@ -40,19 +28,11 @@ async function requestJson(path, { method, body, query }) {
     err.code = data?.error || resp.status;
     err.status = resp.status;
     err.details = data?.details || null;
-    console.error(`[DEBUG] requestJson error:`, {
-      message,
-      status: resp.status,
-      data,
-      url: url.toString(),
-    });
     throw err;
   }
   if (!data) {
-    console.error(`[DEBUG] requestJson - invalid response data`, { url: url.toString() });
     throw new Error("Réponse serveur invalide.");
   }
-  console.log(`[DEBUG] requestJson success`, { data });
   return data;
 }
 

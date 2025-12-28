@@ -140,8 +140,6 @@ export default async function handler(req, res) {
       my: anonDeviceId ? { choice: myChoice, name: myName } : null,
     });
   } catch (e) {
-    console.error("[invite-responses] Error:", {
-      message: e instanceof Error ? e.message : String(e),
       stack: e instanceof Error ? e.stack : undefined,
       name: e instanceof Error ? e.name : undefined,
       inviteId,
