@@ -132,9 +132,9 @@ function CreateView({ urlParams }) {
     const whenAtValue = new Date(whenDateObj).toISOString();
     const confirmByValue = confirmationAt ? confirmationAt.toISOString() : new Date(whenDateObj).toISOString();
     
-    // Construire l'URL en premier pour rediriger le plus tôt possible
-    const shareUrl = buildShareUrl(id);
-    const url = new URL(shareUrl);
+    // Construire l'URL directement vers le dashboard (évite la page intermédiaire /i/id)
+    const url = new URL(window.location.origin);
+    url.searchParams.set('inviteId', id);
     url.searchParams.set('t', encodeURIComponent(titleValue));
     url.searchParams.set('w', whenAtValue);
     url.searchParams.set('c', confirmByValue);

@@ -48,6 +48,7 @@ export default async function handler(req, res) {
     const confirmText = invite ? formatConfirm(invite) : "";
     
     // Construire une description riche avec toutes les données immuables
+    // Format avec sauts de ligne pour affichage vertical dans l'aperçu
     let descriptionParts = [];
     if (whenText) {
       descriptionParts.push(`📅 ${whenText}`);
@@ -63,7 +64,8 @@ export default async function handler(req, res) {
     } else {
       descriptionParts.push("→ Répondre ici");
     }
-    const description = descriptionParts.join(" • ");
+    // Utiliser des sauts de ligne pour affichage vertical (certaines plateformes les respectent)
+    const description = descriptionParts.join("\n");
 
     // Inclure les infos dans l'URL pour éviter le chargement initial côté guest
     const urlParams = new URLSearchParams();
