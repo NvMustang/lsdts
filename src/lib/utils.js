@@ -1,0 +1,181 @@
+// Parse URL params pour invite ou prefill
+export function parseUrlParams() {
+  const params = new URLSearchParams(window.location.search);
+  const m = params.get("m");
+  // Si m est null (paramètre absent) ou la chaîne "undefined", retourner undefined
+  return {
+    inviteId: params.get("inviteId"),
+    t: params.get("t"),
+    w: params.get("w"),
+    c: params.get("c"),
+    m: (m !== null && m !== "undefined") ? m : undefined,
+  };
+}
+
+// Génération d'ID unique
+export function generateId() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// LocalStorage - Device ID
+export function getAnonDeviceId() {
+  const key = "lsdts:anon_device_id";
+  const existing = localStorage.getItem(key);
+  if (existing && existing.trim()) return existing;
+  const id = generateId();
+  localStorage.setItem(key, id);
+  return id;
+}
+
+// LocalStorage - User Name
+export function getUserName() {
+  return localStorage.getItem("lsdts:user_name") || "";
+}
+
+export function saveUserName(name) {
+  const normalized = normalizeName(name);
+  if (normalized) {
+    localStorage.setItem("lsdts:user_name", normalized);
+  }
+}
+
+// URL / Formatage
+export function buildShareUrl(inviteId) {
+  return `${window.location.origin}/i/${inviteId}`;
+}
+
+export function formatStatus(status) {
+  if (status === "LOADING") return "Chargement...";
+  if (status === "FULL") return "Complet";
+  if (status === "CLOSED") return "Clôturé";
+  if (status === "OPEN") return "Ouvert";
+  return status;
+}
+
+// Formatage de dates
+export function formatWhen(invite) {
+  if (!invite?.when_at) return "";
+  const d = new Date(invite.when_at);
+  if (Number.isNaN(d.getTime())) return "";
+  const base = d.toLocaleString("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit" });
+  if (!invite.when_has_time) return base;
+  const time = d.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  return `${base} ${time}`;
+}
+
+export function formatConfirm(invite) {
+  if (!invite?.confirm_by) return "";
+  const c = new Date(invite.confirm_by);
+  if (Number.isNaN(c.getTime())) return "";
+  if (!invite?.when_at) return c.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  const w = new Date(invite.when_at);
+  if (Number.isNaN(w.getTime())) return c.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  const sameDay =
+    c.getFullYear() === w.getFullYear() && c.getMonth() === w.getMonth() && c.getDate() === w.getDate();
+  const time = c.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  if (sameDay) return time;
+  const date = c.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit" });
+  return `${date} ${time}`;
+}
+
+export function formatClosure(date) {
+  const day = date.toLocaleString("fr-FR", { weekday: "short" });
+  const time = date.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  return `${day} ${time}`;
+}
+
+// Conversion Date ↔ string
+export function dateToWhenAtLocal(date) {
+  if (!date) return "";
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const da = String(date.getDate()).padStart(2, "0");
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  return `${y}-${m}-${da}T${hh}:${mm}`;
+}
+
+export function normalizeName(name) {
+  return String(name || "").trim().replace(/\s+/g, " ");
+}
+
+// Parse et valide capacityMax (2-10 personnes)
+export function parseCapacityMax(value) {
+  if (!value || (typeof value === 'string' && !value.trim())) return null;
+  const num = Number.parseInt(value, 10);
+  if (Number.isNaN(num) || num < 2 || num > 10) return null;
+  return num;
+}
+
+// Conversion offset → millisecondes
+// Retourne null si offset invalide (comportement unifié avec backend)
+export function offsetToMs(offset) {
+  if (offset === "immediate") return 0;
+  if (offset === "30m") return 30 * 60 * 1000;
+  if (offset === "1h") return 60 * 60 * 1000;
+  if (offset === "3h") return 3 * 60 * 60 * 1000;
+  if (offset === "8h") return 8 * 60 * 60 * 1000;
+  if (offset === "eve") return 24 * 60 * 60 * 1000;
+  return null;
+}
+
+// Options de confirmation disponibles (usage interne)
+const CONFIRM_OFFSETS = [
+  { value: "30m", label: "30 min avant" },
+  { value: "1h", label: "1 h avant" },
+  { value: "3h", label: "3 h avant" },
+  { value: "8h", label: "8 h avant" },
+  { value: "eve", label: "La veille" },
+];
+
+// Filtre les offsets disponibles selon le delta restant
+export function getAvailableOffsets(deltaMs) {
+  if (deltaMs === null || deltaMs <= 0) return [];
+  const deltaHours = deltaMs / (60 * 60 * 1000);
+  const deltaMinutes = deltaMs / (60 * 1000);
+
+  if (deltaMinutes <= 30) return [];
+  if (deltaHours <= 1) return [CONFIRM_OFFSETS[0]];
+  if (deltaHours <= 3) return CONFIRM_OFFSETS.slice(0, 2);
+  if (deltaHours <= 8) return CONFIRM_OFFSETS.slice(0, 3);
+  return CONFIRM_OFFSETS;
+}
+
+// Génère la date par défaut (now + 1h, arrondie, dans les limites 6h-23h)
+export function getDefaultWhenDate() {
+  const now = new Date();
+  const defaultDate = new Date(now.getTime() + 60 * 60 * 1000); // +1h
+  
+  // Arrondir à la demi-heure supérieure
+  const minutes = defaultDate.getMinutes();
+  if (minutes > 30) {
+    defaultDate.setMinutes(0);
+    defaultDate.setHours(defaultDate.getHours() + 1);
+  } else if (minutes > 0) {
+    defaultDate.setMinutes(30);
+  } else {
+    defaultDate.setMinutes(0);
+  }
+  
+  // S'assurer que l'heure est entre 6h et 23h
+  const hour = defaultDate.getHours();
+  if (hour < 6) {
+    defaultDate.setHours(6, 0, 0, 0);
+  } else if (hour > 23 || (hour === 23 && defaultDate.getMinutes() > 0)) {
+    defaultDate.setDate(defaultDate.getDate() + 1);
+    defaultDate.setHours(6, 0, 0, 0);
+  }
+  
+  // S'assurer que la date est dans la plage valide (aujourd'hui à J+7)
+  const maxDate = new Date();
+  maxDate.setDate(maxDate.getDate() + 7);
+  maxDate.setHours(23, 59, 59, 999);
+  if (defaultDate > maxDate) {
+    return null;
+  }
+  
+  return defaultDate;
+}
+
