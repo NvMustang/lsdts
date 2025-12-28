@@ -57,7 +57,8 @@ export function formatStatus(status) {
 // Formatage de dates
 export function formatWhen(invite) {
   if (!invite?.when_at) return "";
-  const d = new Date(invite.when_at);
+  // Essayer d'abord le format local (sans timezone), sinon le format ISO standard
+  const d = parseIsoLocal(invite.when_at) || new Date(invite.when_at);
   if (Number.isNaN(d.getTime())) return "";
   const base = d.toLocaleString("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit" });
   if (!invite.when_has_time) return base;
@@ -67,10 +68,11 @@ export function formatWhen(invite) {
 
 export function formatConfirm(invite) {
   if (!invite?.confirm_by) return "";
-  const c = new Date(invite.confirm_by);
+  // Essayer d'abord le format local (sans timezone), sinon le format ISO standard
+  const c = parseIsoLocal(invite.confirm_by) || new Date(invite.confirm_by);
   if (Number.isNaN(c.getTime())) return "";
   if (!invite?.when_at) return c.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-  const w = new Date(invite.when_at);
+  const w = parseIsoLocal(invite.when_at) || new Date(invite.when_at);
   if (Number.isNaN(w.getTime())) return c.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
   
   const sameDay =
@@ -125,6 +127,43 @@ export function dateToWhenAtLocal(date) {
   const hh = String(date.getHours()).padStart(2, "0");
   const mm = String(date.getMinutes()).padStart(2, "0");
   return `${y}-${m}-${da}T${hh}:${mm}`;
+}
+
+// Convertit une Date en format ISO local (sans timezone) pour éviter les problèmes de conversion UTC
+// Format: YYYY-MM-DDTHH:MM:SS (sans le Z final)
+export function dateToIsoLocal(date) {
+  if (!date) return "";
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const da = String(date.getDate()).padStart(2, "0");
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  const ss = String(date.getSeconds()).padStart(2, "0");
+  return `${y}-${m}-${da}T${hh}:${mm}:${ss}`;
+}
+
+// Parse une date ISO locale (sans timezone) en Date, en l'interprétant comme heure locale
+// Accepte les formats: YYYY-MM-DDTHH:MM:SS ou YYYY-MM-DDTHH:MM
+export function parseIsoLocal(isoString) {
+  if (!isoString) return null;
+  const s = String(isoString).trim();
+  // Enlever le Z final s'il existe (format UTC)
+  const clean = s.endsWith("Z") ? s.slice(0, -1) : s;
+  const parts = clean.split("T");
+  if (parts.length !== 2) return null;
+  const [dateStr, timeStr] = parts;
+  const [y, m, d] = dateStr.split("-").map((x) => Number.parseInt(x, 10));
+  const timeParts = timeStr.split(":");
+  const hh = Number.parseInt(timeParts[0] || "0", 10);
+  const mm = Number.parseInt(timeParts[1] || "0", 10);
+  const ss = Number.parseInt(timeParts[2] || "0", 10);
+  
+  if (!y || !m || !d || !Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+  
+  // Créer une date en heure locale (sans conversion UTC)
+  const dt = new Date(y, m - 1, d, hh, mm, ss, 0);
+  if (Number.isNaN(dt.getTime())) return null;
+  return dt;
 }
 
 export function normalizeName(name) {

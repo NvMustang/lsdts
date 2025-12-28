@@ -6,6 +6,8 @@ import {
   formatConfirm,
   formatClosure,
   dateToWhenAtLocal,
+  dateToIsoLocal,
+  parseIsoLocal,
   normalizeName,
   parseCapacityMax,
   offsetToMs,
@@ -83,7 +85,7 @@ function CreateView({ urlParams }) {
   const [showCapacity, setShowCapacity] = useState(false);
   
   const initialWhenDate = prefillWhen 
-    ? new Date(prefillWhen)
+    ? (parseIsoLocal(prefillWhen) || getDefaultWhenDate())
     : getDefaultWhenDate();
   const [whenDateObj, setWhenDateObj] = useState(initialWhenDate);
   const [confirmOffset, setConfirmOffset] = useState("30m");
@@ -128,9 +130,10 @@ function CreateView({ urlParams }) {
     localStorage.setItem(`lsdts:organizer:${id}`, "1");
 
     // Préparer les valeurs minimales pour l'URL (redirection immédiate)
+    // Utiliser le format local (sans timezone) pour éviter les problèmes de conversion UTC
     const titleValue = title.trim();
-    const whenAtValue = new Date(whenDateObj).toISOString();
-    const confirmByValue = confirmationAt ? confirmationAt.toISOString() : new Date(whenDateObj).toISOString();
+    const whenAtValue = dateToIsoLocal(whenDateObj);
+    const confirmByValue = confirmationAt ? dateToIsoLocal(confirmationAt) : dateToIsoLocal(whenDateObj);
     
     // Construire l'URL directement vers la page principale avec tous les paramètres
     // Évite le passage par /i/{inviteId} qui pourrait ne pas avoir l'invitation encore dans le backend
