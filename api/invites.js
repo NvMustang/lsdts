@@ -1,6 +1,6 @@
 import { json } from "./_sheets.js";
 import { appendInvite, appendLog, appendResponse, ensureMvpTabs, readAll, updateInviteRowById } from "./_mvpStore.js";
-import { badRequest, serverError, randomId, offsetToMs, parseBody, normalizeName, nowIso } from "./_utils.js";
+import { badRequest, serverError, randomId, offsetToMs, parseBody, normalizeName, nowIso, dateToIsoLocal } from "./_utils.js";
 import { computeStatus } from "./_inviteUtils.js";
 
 function clampInt(n, min, max) {
@@ -96,12 +96,13 @@ export default async function handler(req, res) {
       let inviteId = typeof body.invite_id === "string" && body.invite_id.length === 32 ? body.invite_id : randomId();
       const createdAt = new Date().toISOString();
 
+  // Stocker les dates en format local (sans timezone) pour éviter les problèmes de conversion UTC
   const inviteRow = [
     inviteId,
     title,
-    whenParsed.date.toISOString(),
+    dateToIsoLocal(whenParsed.date),
     whenParsed.hasTime ? "1" : "0",
-    confirmBy.toISOString(),
+    dateToIsoLocal(confirmBy),
     capacityMax === null ? "" : String(capacityMax),
     createdAt,
     "OPEN",
@@ -131,7 +132,7 @@ export default async function handler(req, res) {
     // yes_count = 1 (l'organisateur compte dans la capacité)
     const yesCount = 1;
     const inviteForStatus = {
-      confirm_by: confirmBy.toISOString(),
+      confirm_by: dateToIsoLocal(confirmBy),
       capacity_max: capacityMax,
     };
     const statusResult = computeStatus(inviteForStatus, yesCount, now);

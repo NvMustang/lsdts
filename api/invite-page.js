@@ -1,6 +1,6 @@
 import { getAccessToken, text } from "./_sheets.js";
 import { ensureMvpTabs, readAll, TAB_INVITES } from "./_mvpStore.js";
-import { findInviteInRows } from "./_utils.js";
+import { findInviteInRows, parseDateLocalOrUtc } from "./_utils.js";
 
 const SCOPE_RO = "https://www.googleapis.com/auth/spreadsheets.readonly";
 
@@ -14,7 +14,8 @@ function escapeHtml(s) {
 }
 
 function formatWhen(invite) {
-  const d = new Date(invite.when_at);
+  const d = parseDateLocalOrUtc(invite.when_at);
+  if (!d) return "";
   const base = d.toLocaleString("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit" });
   if (!invite.when_has_time) return base;
   const time = d.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
@@ -22,8 +23,9 @@ function formatWhen(invite) {
 }
 
 function formatConfirm(invite) {
-  const c = new Date(invite.confirm_by);
-  const w = new Date(invite.when_at);
+  const c = parseDateLocalOrUtc(invite.confirm_by);
+  const w = parseDateLocalOrUtc(invite.when_at);
+  if (!c || !w) return "";
   const sameDay =
     c.getFullYear() === w.getFullYear() && c.getMonth() === w.getMonth() && c.getDate() === w.getDate();
   const time = c.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });

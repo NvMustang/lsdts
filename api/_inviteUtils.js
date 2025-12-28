@@ -1,4 +1,5 @@
 // Fonctions utilitaires partagées pour la gestion des invitations
+import { parseDateLocalOrUtc } from "./_utils.js";
 
 /**
  * Calcule le statut d'une invitation
@@ -9,7 +10,9 @@
  */
 export function computeStatus(invite, yesCount, now) {
   if (!invite?.confirm_by) return { status: "OPEN", closureCause: "" };
-  const confirmBy = new Date(invite.confirm_by);
+  // Utiliser parseDateLocalOrUtc pour gérer correctement les dates locales et UTC
+  const confirmBy = parseDateLocalOrUtc(invite.confirm_by);
+  if (!confirmBy) return { status: "OPEN", closureCause: "" };
   if (now.getTime() > confirmBy.getTime()) return { status: "CLOSED", closureCause: "EXPIRED" };
   if (invite.capacity_max !== null && yesCount >= invite.capacity_max)
     return { status: "FULL", closureCause: "FULL" };
@@ -25,8 +28,9 @@ export function computeStatus(invite, yesCount, now) {
  */
 export function convertMaybeToNoIfExpired(invite, now, counts) {
   if (!invite?.confirm_by) return counts;
-  const confirmBy = new Date(invite.confirm_by);
-  if (now.getTime() <= confirmBy.getTime()) return counts;
+  // Utiliser parseDateLocalOrUtc pour gérer correctement les dates locales et UTC
+  const confirmBy = parseDateLocalOrUtc(invite.confirm_by);
+  if (!confirmBy || now.getTime() <= confirmBy.getTime()) return counts;
   // MAYBE counts as NO after expiration (server conversion).
   return { ...counts, no: counts.no + counts.maybe, maybe: 0 };
 }
