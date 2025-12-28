@@ -140,11 +140,16 @@ export default async function handler(req, res) {
     await updateInviteRowById(inviteId, (row, idx) => {
       row[idx.yes_count] = String(yesCount);
       row[idx.first_response_at] = responseCreatedAt;
-      // Mettre à jour le statut si nécessaire (ex: capacity_max === 1)
+      // Mettre à jour le statut si nécessaire (FULL ou CLOSED)
       if (statusResult.status === "FULL") {
         row[idx.status] = "FULL";
         row[idx.closed_at] = responseCreatedAt;
         row[idx.closure_cause] = "FULL";
+      } else if (statusResult.status === "CLOSED") {
+        // Cas où confirm_by est dans le passé (confirmation immédiate avec événement dans le passé)
+        row[idx.status] = "CLOSED";
+        row[idx.closed_at] = responseCreatedAt;
+        row[idx.closure_cause] = "EXPIRED";
       }
       return row;
     });

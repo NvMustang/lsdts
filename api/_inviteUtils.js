@@ -13,7 +13,8 @@ export function computeStatus(invite, yesCount, now) {
   // Utiliser parseDateLocalOrUtc pour gérer correctement les dates locales et UTC
   const confirmBy = parseDateLocalOrUtc(invite.confirm_by);
   if (!confirmBy) return { status: "OPEN", closureCause: "" };
-  if (now.getTime() > confirmBy.getTime()) return { status: "CLOSED", closureCause: "EXPIRED" };
+  // Utiliser >= pour fermer dès que l'heure est atteinte (important pour "confirmation immédiate")
+  if (now.getTime() >= confirmBy.getTime()) return { status: "CLOSED", closureCause: "EXPIRED" };
   if (invite.capacity_max !== null && yesCount >= invite.capacity_max)
     return { status: "FULL", closureCause: "FULL" };
   return { status: "OPEN", closureCause: "" };
@@ -30,7 +31,8 @@ export function convertMaybeToNoIfExpired(invite, now, counts) {
   if (!invite?.confirm_by) return counts;
   // Utiliser parseDateLocalOrUtc pour gérer correctement les dates locales et UTC
   const confirmBy = parseDateLocalOrUtc(invite.confirm_by);
-  if (!confirmBy || now.getTime() <= confirmBy.getTime()) return counts;
+  // Utiliser < pour ne convertir que si l'heure est strictement dépassée
+  if (!confirmBy || now.getTime() < confirmBy.getTime()) return counts;
   // MAYBE counts as NO after expiration (server conversion).
   return { ...counts, no: counts.no + counts.maybe, maybe: 0 };
 }
