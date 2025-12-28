@@ -40,7 +40,8 @@ async function route(req, res) {
   // /i/:inviteId -> OG + redirect page
   if (url.pathname.startsWith("/i/")) {
     const inviteId = url.pathname.slice("/i/".length).split("/")[0] || "";
-    req.query = { inviteId };
+    // Préserver les paramètres de query string (t, w, c, m) s'ils sont présents
+    req.query = { inviteId, ...Object.fromEntries(url.searchParams.entries()) };
     return await invitePageHandler(req, res);
   }
 

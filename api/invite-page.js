@@ -100,7 +100,21 @@ export default async function handler(req, res) {
     // Inclure les infos dans l'URL pour éviter le chargement initial côté guest
     const urlParams = new URLSearchParams();
     urlParams.set("inviteId", inviteId);
-    if (invite) {
+    
+    // Utiliser les paramètres de query string s'ils sont présents (cas où l'invitation n'est pas encore dans le backend)
+    // Sinon, utiliser les données du backend
+    const hasQueryParams = req.query?.t && req.query?.w && req.query?.c;
+    
+    if (hasQueryParams) {
+      // Utiliser les paramètres de query string (plus rapide, évite le problème de timing)
+      urlParams.set("t", req.query.t);
+      urlParams.set("w", req.query.w);
+      urlParams.set("c", req.query.c);
+      if (req.query.m) {
+        urlParams.set("m", req.query.m);
+      }
+    } else if (invite) {
+      // Fallback : utiliser les données du backend
       urlParams.set("t", encodeURIComponent(invite.title));
       urlParams.set("w", invite.when_at);
       urlParams.set("c", invite.confirm_by);
