@@ -101,9 +101,18 @@ export default async function handler(req, res) {
     <meta name="twitter:title" content="${escapeHtml(title)}" />
     <meta name="twitter:description" content="${escapeHtml(description)}" />
     <meta http-equiv="refresh" content="0; url=${escapeHtml(redirectUrl)}" />
+    <style>
+      body { 
+        margin: 0; 
+        padding: 0; 
+        background: radial-gradient(circle at 10% 20%, #f1e9dc 0%, #f7f2e9 38%, #fdfbf7 72%);
+        min-height: 100vh; 
+        font-family: system-ui, -apple-system, sans-serif; 
+      }
+    </style>
   </head>
   <body>
-    <a href="${escapeHtml(redirectUrl)}">Répondre ici</a>
+    <script>window.location.replace("${escapeHtml(redirectUrl)}");</script>
   </body>
 </html>`;
 
