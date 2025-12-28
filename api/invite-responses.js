@@ -22,8 +22,10 @@ export default async function handler(req, res) {
   const isOrganizer = req.query?.is_organizer === "1";
 
   try {
-    await getAccessToken(SCOPE_RO);
+    // ensureMvpTabs() nécessite SCOPE_RW, mais on peut l'appeler avant getAccessToken(SCOPE_RO)
+    // car il gère son propre token en interne
     await ensureMvpTabs();
+    await getAccessToken(SCOPE_RO);
 
     // Ne jamais charger TAB_INVITES : toutes les infos sont disponibles dans l'URL
     const promises = [readAll(TAB_RESPONSES, 10000)];
@@ -33,6 +35,11 @@ export default async function handler(req, res) {
     const results = await Promise.all(promises);
     const responsesRows = results[0];
     const viewsRows = isOrganizer ? results[1] : null;
+    
+    // Vérifier que responsesRows est un tableau valide
+    if (!Array.isArray(responsesRows)) {
+      throw new Error(`Invalid responsesRows: expected array, got ${typeof responsesRows}`);
+    }
 
     // Construire invite depuis les paramètres de l'URL (toujours disponibles)
     const confirmBy = req.query.confirm_by;
@@ -49,7 +56,14 @@ export default async function handler(req, res) {
       invite.when_has_time = req.query.when_has_time === "1";
     }
 
-    const { idx: rIdx, rows: rData } = rowsToObjects(responsesRows);
+    let rIdx, rData;
+    try {
+      const parsed = rowsToObjects(responsesRows);
+      rIdx = parsed.idx;
+      rData = parsed.rows;
+    } catch (e) {
+      throw new Error(`Failed to parse responsesRows: ${e instanceof Error ? e.message : String(e)}`);
+    }
     const responsesForInvite = rData
       .filter((r) => String(r[rIdx.invite_id] || "") === inviteId)
       .map((r) => ({
@@ -126,6 +140,14 @@ export default async function handler(req, res) {
       my: anonDeviceId ? { choice: myChoice, name: myName } : null,
     });
   } catch (e) {
+    console.error("[invite-responses] Error:", {
+      message: e instanceof Error ? e.message : String(e),
+      stack: e instanceof Error ? e.stack : undefined,
+      name: e instanceof Error ? e.name : undefined,
+      inviteId,
+      isOrganizer,
+      query: req.query,
+    });
     return serverError(res, "Get responses failed", e instanceof Error ? e.message : String(e));
   }
 }
