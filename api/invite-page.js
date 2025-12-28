@@ -48,25 +48,22 @@ export default async function handler(req, res) {
     const confirmText = invite ? formatConfirm(invite) : "";
     
     // Construire une description riche avec toutes les données immuables
-    // Format avec sauts de ligne pour affichage vertical dans l'aperçu
     let descriptionParts = [];
     if (whenText) {
-      descriptionParts.push(whenText);
+      descriptionParts.push(`📅 ${whenText}`);
     }
     if (confirmText) {
-      descriptionParts.push(`Confirmation avant ${confirmText}`);
+      descriptionParts.push(`⏰ Confirmation avant ${confirmText}`);
     }
     if (invite?.capacity_max !== null && invite?.capacity_max !== undefined) {
-      descriptionParts.push(`Capacité : ${invite.capacity_max} personnes`);
+      descriptionParts.push(`👥 Capacité : ${invite.capacity_max} personnes`);
     }
-    // Mettre "Répondre ici" en évidence avec emoji pour inciter
     if (descriptionParts.length === 0) {
-      descriptionParts.push("👉 RÉPONDRE ICI");
+      descriptionParts.push("→ Répondre ici");
     } else {
-      descriptionParts.push("👉 RÉPONDRE ICI");
+      descriptionParts.push("→ Répondre ici");
     }
-    // Utiliser des sauts de ligne pour affichage vertical (certaines plateformes les respectent)
-    const description = descriptionParts.join("\n");
+    const description = descriptionParts.join(" • ");
 
     // Inclure les infos dans l'URL pour éviter le chargement initial côté guest
     const urlParams = new URLSearchParams();
@@ -86,33 +83,25 @@ export default async function handler(req, res) {
     const canonicalUrl = `${protocol}://${host}/i/${inviteId}`;
 
     // Serve HTML with OG tags. For browsers, redirect to the SPA with inviteId and infos as query params.
+    // Note: redirectUrl et canonicalUrl sont déjà des URLs valides, pas besoin d'escapeHtml
     const html = `<!doctype html>
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${escapeHtml(title)}</title>
-    <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
+    <link rel="canonical" href="${canonicalUrl}" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="${escapeHtml(title)}" />
     <meta property="og:description" content="${escapeHtml(description)}" />
-    <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
+    <meta property="og:url" content="${canonicalUrl}" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="${escapeHtml(title)}" />
     <meta name="twitter:description" content="${escapeHtml(description)}" />
-    <meta http-equiv="refresh" content="0; url=${escapeHtml(redirectUrl)}" />
-    <style>
-      body { 
-        margin: 0; 
-        padding: 0; 
-        background: radial-gradient(circle at 10% 20%, #f1e9dc 0%, #f7f2e9 38%, #fdfbf7 72%);
-        min-height: 100vh; 
-        font-family: system-ui, -apple-system, sans-serif; 
-      }
-    </style>
+    <meta http-equiv="refresh" content="0; url=${redirectUrl}" />
   </head>
   <body>
-    <script>window.location.replace("${escapeHtml(redirectUrl)}");</script>
+    <a href="${redirectUrl}">Répondre ici</a>
   </body>
 </html>`;
 
