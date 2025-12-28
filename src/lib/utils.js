@@ -72,12 +72,42 @@ export function formatConfirm(invite) {
   if (!invite?.when_at) return c.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
   const w = new Date(invite.when_at);
   if (Number.isNaN(w.getTime())) return c.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  
   const sameDay =
     c.getFullYear() === w.getFullYear() && c.getMonth() === w.getMonth() && c.getDate() === w.getDate();
   const time = c.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-  if (sameDay) return time;
+  
+  // Calculer l'offset relatif pour ajouter du contexte
+  const deltaMs = w.getTime() - c.getTime();
+  const deltaHours = deltaMs / (60 * 60 * 1000);
+  const deltaMinutes = deltaMs / (60 * 1000);
+  
+  let relativeContext = "";
+  if (sameDay) {
+    // Même jour : afficher l'offset en heures/minutes
+    if (deltaMinutes < 60) {
+      relativeContext = ` (${Math.round(deltaMinutes)} min avant)`;
+    } else if (deltaHours < 24) {
+      const hours = Math.round(deltaHours * 10) / 10; // Arrondir à 0.1 h près
+      if (hours === Math.floor(hours)) {
+        relativeContext = ` (${Math.floor(hours)} h avant)`;
+      } else {
+        relativeContext = ` (${hours} h avant)`;
+      }
+    }
+  } else {
+    // Vérifier si c'est la veille (entre 20h et 24h avant)
+    const daysDiff = Math.floor((w.getTime() - c.getTime()) / (24 * 60 * 60 * 1000));
+    if (daysDiff === 1) {
+      relativeContext = " (la veille)";
+    }
+  }
+  
+  if (sameDay) {
+    return `${time}${relativeContext}`;
+  }
   const date = c.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit" });
-  return `${date} ${time}`;
+  return `${date} ${time}${relativeContext}`;
 }
 
 export function formatClosure(date) {

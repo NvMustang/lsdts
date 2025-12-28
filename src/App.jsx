@@ -586,7 +586,7 @@ function InviteContainer({ inviteId, urlParams }) {
             />
             <div 
               style={{ 
-                display: (!orga && !invitation?.my?.choice && status !== "FULL" && status !== "CLOSED") ? "flex" : "none",
+                display: ((!orga && !invitation?.my?.choice && status !== "FULL" && status !== "CLOSED") || (status === "FULL" || status === "CLOSED")) ? "flex" : "none",
                 flexDirection: "column",
                 gap: "8px",
                 width: "100%"
@@ -597,6 +597,7 @@ function InviteContainer({ inviteId, urlParams }) {
                 type="button" 
                 onClick={() => doRespond("YES")} 
                 disabled={!statusLoaded || !normalizeName(guestName)}
+                style={{ display: (!orga && !invitation?.my?.choice && status !== "FULL" && status !== "CLOSED") ? "block" : "none" }}
               >
                 J'y vais
               </button>
@@ -605,6 +606,7 @@ function InviteContainer({ inviteId, urlParams }) {
                 type="button" 
                 onClick={() => doRespond("NO")} 
                 disabled={!statusLoaded || !normalizeName(guestName)}
+                style={{ display: (!orga && !invitation?.my?.choice && status !== "FULL" && status !== "CLOSED") ? "block" : "none" }}
               >
                 Je ne peux pas
               </button>
@@ -613,19 +615,20 @@ function InviteContainer({ inviteId, urlParams }) {
                 type="button" 
                 onClick={() => doRespond("MAYBE")} 
                 disabled={!statusLoaded || !normalizeName(guestName)}
+                style={{ display: (!orga && !invitation?.my?.choice && status !== "FULL" && status !== "CLOSED") ? "block" : "none" }}
               >
                 Je regarde
               </button>
+              {/* Bouton Recréer - toujours présent, contenu conditionnel */}
+              <button 
+                className="btn btnPrimary" 
+                type="button" 
+                onClick={recreate}
+                style={{ display: (status === "FULL" || status === "CLOSED") ? "block" : "none" }}
+              >
+                Recréer la proposition
+              </button>
             </div>
-            {/* Bouton Recréer - toujours présent, contenu conditionnel */}
-            <button 
-              className="btn btnPrimary" 
-              type="button" 
-              onClick={recreate}
-              style={{ display: (status === "FULL" || status === "CLOSED") ? "block" : "none" }}
-            >
-              Recréer la proposition
-            </button>
           </div>
         </div>
 
