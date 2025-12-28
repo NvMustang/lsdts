@@ -593,10 +593,24 @@ function InviteContainer({ inviteId, urlParams }) {
         }`}>
           {formatStatus(invitation.status)}
         </div>
+        {/* Bouton Copier le lien - même condition que Participants */}
+        <button 
+          className="btn" 
+          type="button" 
+          onClick={handleCopyUrl}
+          style={{ display: (orga || invitation?.my?.choice === "YES") ? "block" : "none" }}
+        >
+          Copier le lien
+        </button>
       </div>
 
         {/* Section centralisée : Actions */}
-        <div className="section">
+        <div className="section" style={{ 
+          display: (
+            (!orga && !invitation?.my?.choice && status !== "FULL" && status !== "CLOSED") || 
+            (status === "FULL" || status === "CLOSED")
+          ) ? "block" : "none" 
+        }}>
           <div className="ctaContainer">
             {/* Formulaire guest - toujours présent, contenu conditionnel */}
             <label 
@@ -616,16 +630,35 @@ function InviteContainer({ inviteId, urlParams }) {
               style={{ display: (!orga && !invitation?.my?.choice && status !== "FULL" && status !== "CLOSED") ? "block" : "none" }}
             />
             <div 
-              className="btnRow statusBarWidth"
-              style={{ display: (!orga && !invitation?.my?.choice && status !== "FULL" && status !== "CLOSED") ? "flex" : "none" }}
+              style={{ 
+                display: (!orga && !invitation?.my?.choice && status !== "FULL" && status !== "CLOSED") ? "flex" : "none",
+                flexDirection: "column",
+                gap: "8px",
+                width: "100%"
+              }}
             >
-              <button className="btn btnPrimary btnSmall" type="button" onClick={() => doRespond("YES")} disabled={!statusLoaded}>
+              <button 
+                className="btn btnPrimary" 
+                type="button" 
+                onClick={() => doRespond("YES")} 
+                disabled={!statusLoaded || !normalizeName(guestName)}
+              >
                 J'y vais
               </button>
-              <button className="btn btnSmall" type="button" onClick={() => doRespond("NO")} disabled={!statusLoaded}>
+              <button 
+                className="btn" 
+                type="button" 
+                onClick={() => doRespond("NO")} 
+                disabled={!statusLoaded || !normalizeName(guestName)}
+              >
                 Je ne peux pas
               </button>
-              <button className="btn btnSmall" type="button" onClick={() => doRespond("MAYBE")} disabled={!statusLoaded}>
+              <button 
+                className="btn" 
+                type="button" 
+                onClick={() => doRespond("MAYBE")} 
+                disabled={!statusLoaded || !normalizeName(guestName)}
+              >
                 Je regarde
               </button>
             </div>
@@ -647,20 +680,8 @@ function InviteContainer({ inviteId, urlParams }) {
             participants={invitation.participants || []} 
             capacityMax={capacityMax}
             yesCount={yes || invitation.participants?.length || 0}
-            show={invitation.participants && invitation.participants.length > 0 && (orga || invitation?.my?.choice === "YES")}
+            show={orga || invitation?.my?.choice === "YES"}
           />
-        </div>
-
-        {/* Section centralisée : Copier le lien - orga uniquement si OPEN */}
-        <div className="section">
-          <button 
-            className="btn" 
-            type="button" 
-            onClick={handleCopyUrl}
-            style={{ display: (orga && status === "OPEN") ? "block" : "none" }}
-          >
-            Copier le lien
-          </button>
         </div>
 
         {/* Section centralisée : Stats - orga uniquement */}

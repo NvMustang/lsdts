@@ -9,11 +9,11 @@ export default function TimeSlotPicker({ value, onChange }) {
   const startYRef = useRef(0);
   const scrollStartRef = useRef(0);
 
-  // Générer les 8 prochains jours (mémorisé)
+  // Générer les 2 prochains jours (aujourd'hui et demain) - mémorisé
   const dates = useMemo(() => {
     const result = [];
     const now = new Date();
-    for (let i = 0; i <= 7; i++) {
+    for (let i = 0; i <= 1; i++) {
       const d = new Date(now);
       d.setDate(d.getDate() + i);
       d.setHours(0, 0, 0, 0);
@@ -27,8 +27,8 @@ export default function TimeSlotPicker({ value, onChange }) {
   const currentHour = currentDate.getHours();
   const currentMinute = currentDate.getMinutes();
   
-  // Arrondir à 00, 15, 30 ou 45
-  const roundedMinute = Math.floor(currentMinute / 15) * 15;
+  // Arrondir à 00, 15, 30 ou 45 (pour la date sélectionnée)
+  const currentRoundedMinute = Math.floor(currentMinute / 15) * 15;
   
   // Vérifier si la date sélectionnée est aujourd'hui
   const todayKey = useMemo(() => {
@@ -37,30 +37,91 @@ export default function TimeSlotPicker({ value, onChange }) {
   }, []);
   const isToday = currentDateKey === todayKey;
   
-  // Heures et minutes actuelles (pour filtrage)
-  const { nowHour, nowMinute } = useMemo(() => {
+  // Vérifier si la date sélectionnée est demain
+  const tomorrowKey = useMemo(() => {
     const now = new Date();
-    return { nowHour: now.getHours(), nowMinute: now.getMinutes() };
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return `${tomorrow.getFullYear()}-${tomorrow.getMonth()}-${tomorrow.getDate()}`;
+  }, []);
+  const isTomorrow = currentDateKey === tomorrowKey;
+  
+  // Calculer "now arrondi à +15min" pour la limite minimale
+  const { nowHour, nowMinute, roundedHour, roundedMinute } = useMemo(() => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    
+    // Arrondir à +15min : si on est à 14:37, on arrondit à 14:45
+    // Si on est à 14:45, on arrondit à 15:00
+    let roundedMin = Math.ceil((currentMinute + 1) / 15) * 15;
+    let roundedH = currentHour;
+    
+    // Si on dépasse 60 minutes, passer à l'heure suivante
+    if (roundedMin >= 60) {
+      roundedMin = 0;
+      roundedH += 1;
+    }
+    
+    return { 
+      nowHour: currentHour, 
+      nowMinute: currentMinute,
+      roundedHour: roundedH,
+      roundedMinute: roundedMin
+    };
   }, []);
   
   // Heures disponibles de 6h à 23h
   const hours = useMemo(() => {
     const allHours = Array.from({ length: 18 }, (_, i) => i + 6); // 6h à 23h
-    if (!isToday) return allHours;
     
-    // Si aujourd'hui, ne garder que les heures futures (ou heure actuelle si des minutes sont encore disponibles)
-    return allHours.filter(h => h > nowHour || (h === nowHour && nowMinute < 45));
-  }, [isToday, nowHour, nowMinute]);
+    if (isTomorrow) {
+      // Demain : jusqu'à 23:45, donc toutes les heures jusqu'à 23h
+      return allHours;
+    }
+    
+    if (isToday) {
+      // Aujourd'hui : à partir de "now arrondi à +15min"
+      // Si l'heure arrondie dépasse 23h, pas d'heures disponibles aujourd'hui
+      if (roundedHour > 23) return [];
+      
+      // Filtrer les heures : garder celles >= à l'heure arrondie
+      return allHours.filter(h => h >= roundedHour);
+    }
+    
+    return allHours;
+  }, [isToday, isTomorrow, roundedHour]);
   
   // Minutes disponibles
-  const isCurrentHour = isToday && currentHour === nowHour;
   const availableMinutes = useMemo(() => {
     const allMinutes = [0, 15, 30, 45];
-    if (!isCurrentHour) return allMinutes;
     
-    // Si c'est l'heure actuelle, ne garder que les minutes futures
-    return allMinutes.filter(m => m > nowMinute);
-  }, [isCurrentHour, nowMinute]);
+    if (isTomorrow) {
+      // Demain : jusqu'à 23:45, donc toutes les minutes sauf si on est à 23h
+      if (currentHour === 23) {
+        return allMinutes.filter(m => m <= 45); // Limiter à 45 pour 23:45 max
+      }
+      return allMinutes;
+    }
+    
+    if (isToday) {
+      // Aujourd'hui : à partir de "now arrondi à +15min"
+      // Si on est sur l'heure arrondie, filtrer les minutes
+      if (currentHour === roundedHour) {
+        return allMinutes.filter(m => m >= roundedMinute);
+      }
+      
+      // Si on est après l'heure arrondie, toutes les minutes sont disponibles
+      if (currentHour > roundedHour) {
+        return allMinutes;
+      }
+      
+      // Si on est avant l'heure arrondie, aucune minute disponible (ne devrait pas arriver)
+      return [];
+    }
+    
+    return allMinutes;
+  }, [isToday, isTomorrow, currentHour, roundedHour, roundedMinute]);
 
   const handleScroll = (type, ref) => {
     if (!ref.current) return;
@@ -139,7 +200,7 @@ export default function TimeSlotPicker({ value, onChange }) {
       `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` === currentDateKey
     );
     const hourIndex = hours.findIndex(h => h === currentHour);
-    const minuteIndex = availableMinutes.indexOf(roundedMinute);
+    const minuteIndex = availableMinutes.indexOf(currentRoundedMinute);
 
     if (dateRef.current && dateIndex >= 0) {
       dateRef.current.scrollTop = dateIndex * 40;
@@ -150,7 +211,7 @@ export default function TimeSlotPicker({ value, onChange }) {
     if (minuteRef.current && minuteIndex >= 0) {
       minuteRef.current.scrollTop = minuteIndex * 40;
     }
-  }, [dates, currentDateKey, hours, currentHour, roundedMinute, availableMinutes]);
+  }, [dates, currentDateKey, hours, currentHour, currentRoundedMinute, availableMinutes]);
 
   const pickerStyle = {
     display: 'flex',
