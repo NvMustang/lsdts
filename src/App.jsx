@@ -169,8 +169,6 @@ function CreateView({ urlParams }) {
     window.location.replace(url.toString());
   };
 
-
-
   return (
     <>
       <PageShell>
@@ -262,7 +260,6 @@ function CreateView({ urlParams }) {
                 }}
                 placeholder={organizerName ? undefined : "Ex : Alex"}
               />
-              <div className="formHelper"></div>
             </div>
           </div>
 
@@ -432,7 +429,6 @@ function InviteContainer({ inviteId, urlParams }) {
     recordView(inviteId, anonDeviceId).catch(() => {});
   }, []);
 
-
   const doRespond = async (choice) => {
     const n = normalizeName(guestName);
     if (!n) {
@@ -489,9 +485,7 @@ function InviteContainer({ inviteId, urlParams }) {
   const confirmText = formatConfirm(invite);
 
   // Récupérer capacity_max uniquement depuis l'URL (paramètre m) - source unique de vérité
-  const urlParamsFromWindow = new URLSearchParams(window.location.search);
-  const mValue = urlParamsFromWindow.get("m");
-  // Ignorer si mValue est null, "undefined", ou "null"
+  const mValue = urlParams.m;
   const capacityMax = (mValue && mValue !== "undefined" && mValue !== "null") ? parseCapacityMax(mValue) : null;
 
   // Vue unifiée orga/guest
@@ -655,8 +649,6 @@ function InviteContainer({ inviteId, urlParams }) {
         </div>
     </PageShell>
   );
-
-  // Toutes les vues sont maintenant unifiées dans la vue ci-dessus
 }
 
 // ============================================

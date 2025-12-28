@@ -81,4 +81,3 @@ export async function exportAll() {
   return await requestJson("/api/invites", { method: "GET", query: { kind: "all" } });
 }
 
-
