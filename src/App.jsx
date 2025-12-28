@@ -163,7 +163,17 @@ function CreateView({ urlParams }) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ op: "create", ...payload }),
       keepalive: true, // Garantit l'envoi même si la page se décharge
-    }).catch(() => {}); // Ignorer les erreurs silencieusement
+    }).catch((err) => {
+      console.error("[App] createInvite fetch échoué (non bloquant):", {
+        inviteId: id,
+        url: apiUrl.toString(),
+        error: {
+          message: err?.message,
+          name: err?.name,
+          stack: err?.stack,
+        },
+      });
+    });
 
     // Redirection immédiate (replace évite l'entrée dans l'historique, légèrement plus rapide)
     window.location.replace(url.toString());
@@ -373,6 +383,14 @@ function InviteContainer({ inviteId, urlParams }) {
   // useEffect uniquement pour enrichir avec le backend
   useEffect(() => {
     if (!urlInvite) {
+      console.error("[App] urlInvite manquant:", {
+        inviteId,
+        urlParams: {
+          t: urlParams.t ? "[présent]" : "[absent]",
+          w: urlParams.w ? "[présent]" : "[absent]",
+          c: urlParams.c ? "[présent]" : "[absent]",
+        },
+      });
       setError(true);
       return;
     }
@@ -412,8 +430,25 @@ function InviteContainer({ inviteId, urlParams }) {
           setStatusLoaded(true);
           return; // Succès, on sort de la boucle
         } catch (e) {
+          const isLastAttempt = attempt === maxRetries - 1;
+          console.error(`[App] loadResponses échoué (tentative ${attempt + 1}/${maxRetries}):`, {
+            inviteId,
+            anonDeviceId: anonDeviceId ? "[présent]" : "[absent]",
+            isOrganizer: orga,
+            attempt: attempt + 1,
+            maxRetries,
+            isLastAttempt,
+            error: {
+              type: e?.type,
+              message: e?.message,
+              status: e?.status,
+              code: e?.code,
+              details: e?.details,
+              stack: e?.stack,
+            },
+          });
           // Si c'est la dernière tentative, on affiche l'erreur
-          if (attempt === maxRetries - 1) {
+          if (isLastAttempt) {
             setError(true);
             return;
           }
@@ -426,7 +461,19 @@ function InviteContainer({ inviteId, urlParams }) {
     loadResponses();
 
     // Enregistrer la vue (non bloquant)
-    recordView(inviteId, anonDeviceId).catch(() => {});
+    recordView(inviteId, anonDeviceId).catch((err) => {
+      console.error("[App] recordView échoué (non bloquant):", {
+        inviteId,
+        anonDeviceId: anonDeviceId ? "[présent]" : "[absent]",
+        error: {
+          type: err?.type,
+          message: err?.message,
+          status: err?.status,
+          code: err?.code,
+          details: err?.details,
+        },
+      });
+    });
   }, []);
 
   const doRespond = async (choice) => {
@@ -463,6 +510,20 @@ function InviteContainer({ inviteId, urlParams }) {
       });
       setStatusLoaded(true);
     } catch (e) {
+      console.error("[App] doRespond échoué:", {
+        inviteId,
+        anonDeviceId: anonDeviceId ? "[présent]" : "[absent]",
+        name: n,
+        choice,
+        error: {
+          type: e?.type,
+          message: e?.message,
+          status: e?.status,
+          code: e?.code,
+          details: e?.details,
+          stack: e?.stack,
+        },
+      });
       setError(true);
     }
   };

@@ -1,7 +1,13 @@
 async function readJsonSafe(resp) {
   try {
     return await resp.json();
-  } catch {
+  } catch (parseError) {
+    console.error("[API] Erreur de parsing JSON:", {
+      status: resp.status,
+      statusText: resp.statusText,
+      url: resp.url,
+      error: parseError instanceof Error ? parseError.message : String(parseError),
+    });
     return null;
   }
 }
@@ -15,43 +21,147 @@ async function requestJson(path, { method, body, query }) {
     }
   }
 
-  const resp = await fetch(url.toString(), {
+  const fullUrl = url.toString();
+  const requestInfo = {
     method,
-    headers: body ? { "content-type": "application/json" } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+    path,
+    url: fullUrl,
+    hasBody: !!body,
+    queryKeys: query ? Object.keys(query) : [],
+  };
+
+  console.log("[API] Requête:", requestInfo);
+
+  let resp;
+  try {
+    resp = await fetch(fullUrl, {
+      method,
+      headers: body ? { "content-type": "application/json" } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (networkError) {
+    const err = new Error(`Erreur réseau: ${networkError instanceof Error ? networkError.message : String(networkError)}`);
+    err.type = "NETWORK_ERROR";
+    err.originalError = networkError;
+    err.requestInfo = requestInfo;
+    console.error("[API] Erreur réseau:", {
+      ...requestInfo,
+      error: networkError instanceof Error ? {
+        message: networkError.message,
+        name: networkError.name,
+        stack: networkError.stack,
+      } : String(networkError),
+    });
+    throw err;
+  }
 
   const data = await readJsonSafe(resp);
+  
   if (!resp.ok) {
     const message = data?.error || `HTTP ${resp.status}`;
     const err = new Error(message);
+    err.type = "HTTP_ERROR";
     err.code = data?.error || resp.status;
     err.status = resp.status;
+    err.statusText = resp.statusText;
     err.details = data?.details || null;
+    err.requestInfo = requestInfo;
+    err.responseData = data;
+    console.error("[API] Erreur HTTP:", {
+      ...requestInfo,
+      status: resp.status,
+      statusText: resp.statusText,
+      error: message,
+      details: data?.details,
+      responseData: data,
+    });
     throw err;
   }
+  
   if (!data) {
-    throw new Error("Réponse serveur invalide.");
+    const err = new Error("Réponse serveur invalide (pas de JSON)");
+    err.type = "INVALID_RESPONSE";
+    err.status = resp.status;
+    err.requestInfo = requestInfo;
+    console.error("[API] Réponse invalide:", {
+      ...requestInfo,
+      status: resp.status,
+      statusText: resp.statusText,
+    });
+    throw err;
   }
+  
+  console.log("[API] Succès:", {
+    method,
+    path,
+    status: resp.status,
+  });
+  
   return data;
 }
 
 export async function createInvite(payload) {
-  return await requestJson("/api/invites", { method: "POST", body: { op: "create", ...payload } });
+  try {
+    return await requestJson("/api/invites", { method: "POST", body: { op: "create", ...payload } });
+  } catch (err) {
+    console.error("[API] createInvite échoué:", {
+      payload: { ...payload, organizer_name: payload.organizer_name ? "[présent]" : "[absent]" },
+      error: {
+        type: err.type,
+        message: err.message,
+        status: err.status,
+        code: err.code,
+        details: err.details,
+      },
+    });
+    throw err;
+  }
 }
 
 export async function recordView(inviteId, anonDeviceId) {
-  return await requestJson("/api/invite", {
-    method: "POST",
-    body: { op: "view", inviteId, anon_device_id: anonDeviceId },
-  });
+  try {
+    return await requestJson("/api/invite", {
+      method: "POST",
+      body: { op: "view", inviteId, anon_device_id: anonDeviceId },
+    });
+  } catch (err) {
+    console.error("[API] recordView échoué:", {
+      inviteId,
+      anonDeviceId: anonDeviceId ? "[présent]" : "[absent]",
+      error: {
+        type: err.type,
+        message: err.message,
+        status: err.status,
+        code: err.code,
+        details: err.details,
+      },
+    });
+    throw err;
+  }
 }
 
 export async function respond(inviteId, anonDeviceId, name, choice) {
-  return await requestJson("/api/invite", {
-    method: "POST",
-    body: { op: "respond", inviteId, anon_device_id: anonDeviceId, name, choice },
-  });
+  try {
+    return await requestJson("/api/invite", {
+      method: "POST",
+      body: { op: "respond", inviteId, anon_device_id: anonDeviceId, name, choice },
+    });
+  } catch (err) {
+    console.error("[API] respond échoué:", {
+      inviteId,
+      anonDeviceId: anonDeviceId ? "[présent]" : "[absent]",
+      name: name ? "[présent]" : "[absent]",
+      choice,
+      error: {
+        type: err.type,
+        message: err.message,
+        status: err.status,
+        code: err.code,
+        details: err.details,
+      },
+    });
+    throw err;
+  }
 }
 
 export async function getInviteResponses(inviteId, anonDeviceId, isOrganizer = false, basicInfo = null) {
@@ -71,13 +181,44 @@ export async function getInviteResponses(inviteId, anonDeviceId, isOrganizer = f
       query.when_has_time = basicInfo.when_has_time ? "1" : "0";
     }
   }
-  return await requestJson("/api/invite-responses", {
-    method: "GET",
-    query,
-  });
+  try {
+    return await requestJson("/api/invite-responses", {
+      method: "GET",
+      query,
+    });
+  } catch (err) {
+    console.error("[API] getInviteResponses échoué:", {
+      inviteId,
+      anonDeviceId: anonDeviceId ? "[présent]" : "[absent]",
+      isOrganizer,
+      hasBasicInfo: !!basicInfo,
+      queryKeys: Object.keys(query),
+      error: {
+        type: err.type,
+        message: err.message,
+        status: err.status,
+        code: err.code,
+        details: err.details,
+      },
+    });
+    throw err;
+  }
 }
 
 export async function exportAll() {
-  return await requestJson("/api/invites", { method: "GET", query: { kind: "all" } });
+  try {
+    return await requestJson("/api/invites", { method: "GET", query: { kind: "all" } });
+  } catch (err) {
+    console.error("[API] exportAll échoué:", {
+      error: {
+        type: err.type,
+        message: err.message,
+        status: err.status,
+        code: err.code,
+        details: err.details,
+      },
+    });
+    throw err;
+  }
 }
 

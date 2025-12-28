@@ -62,7 +62,23 @@ async function route(req, res) {
 
 const server = http.createServer((req, res) => {
   route(req, res).catch((err) => {
-    console.error("Server error:", err);
+    const errorInfo = {
+      timestamp: new Date().toISOString(),
+      method: req.method,
+      url: req.url,
+      headers: {
+        "user-agent": req.headers["user-agent"],
+        "content-type": req.headers["content-type"],
+      },
+      error: {
+        message: err instanceof Error ? err.message : String(err),
+        name: err instanceof Error ? err.name : "Unknown",
+        stack: err instanceof Error ? err.stack : undefined,
+        code: err?.code,
+        status: err?.status,
+      },
+    };
+    console.error("[Server] Erreur non gérée:", JSON.stringify(errorInfo, null, 2));
     res.statusCode = 500;
     res.setHeader("content-type", "application/json; charset=utf-8");
     const message = err instanceof Error ? err.message : String(err);
