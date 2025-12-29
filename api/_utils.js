@@ -63,27 +63,26 @@ export function parseDateLocalOrUtc(dateString) {
   const s = dateString.trim();
   if (!s) return null;
   
-  // Si format local (YYYY-MM-DDTHH:MM:SS), parser manuellement pour éviter UTC
-  if (!s.endsWith("Z")) {
-    const parts = s.split("T");
-    if (parts.length === 2) {
-      const [dateStr, timeStr] = parts;
-      const [y, m, d] = dateStr.split("-").map((x) => Number.parseInt(x, 10));
-      const timeParts = timeStr.split(":");
-      const hh = Number.parseInt(timeParts[0] || "0", 10);
-      const mm = Number.parseInt(timeParts[1] || "0", 10);
-      const ss = Number.parseInt(timeParts[2] || "0", 10);
-      
-      if (y && m && d && Number.isFinite(hh) && Number.isFinite(mm)) {
-        const dateObj = new Date(y, m - 1, d, hh, mm, ss, 0);
-        if (!Number.isNaN(dateObj.getTime())) return dateObj;
-      }
+  // Parser manuellement pour interpréter comme heure locale (évite UTC)
+  // Format attendu: YYYY-MM-DDTHH:MM ou YYYY-MM-DDTHH:MM:SS
+  const parts = s.split("T");
+  if (parts.length === 2) {
+    const [dateStr, timeStr] = parts;
+    const [y, m, d] = dateStr.split("-").map((x) => Number.parseInt(x, 10));
+    const timeParts = timeStr.split(":");
+    const hh = Number.parseInt(timeParts[0] || "0", 10);
+    const mm = Number.parseInt(timeParts[1] || "0", 10);
+    const ss = Number.parseInt(timeParts[2] || "0", 10);
+    
+    if (y && m && d && Number.isFinite(hh) && Number.isFinite(mm)) {
+      const dateObj = new Date(y, m - 1, d, hh, mm, ss, 0);
+      if (!Number.isNaN(dateObj.getTime())) return dateObj;
     }
   }
   
-  // Fallback : utiliser new Date() directement
-  const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? null : d;
+  // Si le format n'est pas reconnu, retourner null plutôt que d'utiliser new Date()
+  // qui pourrait interpréter comme UTC
+  return null;
 }
 
 // Trouve une invitation dans les rows parsées

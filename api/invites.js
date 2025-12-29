@@ -78,6 +78,25 @@ export default async function handler(req, res) {
   if (whenParsed.error) return badRequest(res, whenParsed.error);
 
   if (!within7Days(whenParsed.date, now)) return badRequest(res, "Quand out of range");
+  
+  // Valider que l'événement est au minimum à "now arrondi à 30 min sup + 30 min"
+  // Pour laisser au minimum 30 min aux guests pour répondre
+  const currentMinute = now.getMinutes();
+  const currentHour = now.getHours();
+  let roundedMin = Math.ceil((currentMinute + 1) / 30) * 30;
+  let roundedH = currentHour;
+  if (roundedMin >= 60) {
+    roundedMin = 0;
+    roundedH += 1;
+  }
+  const nowRounded = new Date(now);
+  nowRounded.setHours(roundedH, roundedMin, 0, 0);
+  const minTimeForGuests = 30 * 60 * 1000; // 30 min
+  const minEventDate = new Date(nowRounded.getTime() + minTimeForGuests);
+  
+  if (whenParsed.date.getTime() < minEventDate.getTime()) {
+    return badRequest(res, "L'événement doit être au minimum dans 30 minutes après l'heure actuelle arrondie.");
+  }
 
   const offsetMs = offsetToMs(confirmOffset);
   if (offsetMs === null) return badRequest(res, "Invalid confirmation offset");

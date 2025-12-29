@@ -46,8 +46,9 @@ export default function TimeSlotPicker({ value, onChange }) {
   }, []);
   const isTomorrow = currentDateKey === tomorrowKey;
   
-  // Calculer "now arrondi à +30min" pour la limite minimale
-  const { nowHour, nowMinute, roundedHour, roundedMinute } = useMemo(() => {
+  // Calculer "now arrondi à +30min + 30min" pour la limite minimale de l'événement
+  // (même logique que la validation backend : now arrondi + 30 min pour les guests)
+  const { nowHour, nowMinute, minEventHour, minEventMinute } = useMemo(() => {
     const now = new Date();
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
@@ -63,11 +64,16 @@ export default function TimeSlotPicker({ value, onChange }) {
       roundedH += 1;
     }
     
+    // Date minimum = now arrondi + 30 min pour les guests
+    const minEventDate = new Date(now);
+    minEventDate.setHours(roundedH, roundedMin, 0, 0);
+    minEventDate.setTime(minEventDate.getTime() + 30 * 60 * 1000); // +30 min
+    
     return { 
       nowHour: currentHour, 
       nowMinute: currentMinute,
-      roundedHour: roundedH,
-      roundedMinute: roundedMin
+      minEventHour: minEventDate.getHours(),
+      minEventMinute: minEventDate.getMinutes()
     };
   }, []);
   
@@ -76,22 +82,22 @@ export default function TimeSlotPicker({ value, onChange }) {
     const allHours = Array.from({ length: 24 }, (_, i) => i); // 0h à 23h
     
     if (isTomorrow) {
-      // Demain : jusqu'à 23:45, donc toutes les heures jusqu'à 23h
+      // Demain : toutes les heures jusqu'à 23h
       return allHours;
     }
     
     if (isToday) {
-      // Aujourd'hui : à partir de "now arrondi à +15min"
-      // Si l'heure arrondie dépasse 23h, pas d'heures disponibles aujourd'hui
+      // Aujourd'hui : à partir de l'heure minimum de l'événement
+      // Si l'heure minimum dépasse 23h, pas d'heures disponibles aujourd'hui
       // (on passera automatiquement à demain)
-      if (roundedHour >= 24) return [];
+      if (minEventHour >= 24) return [];
       
-      // Filtrer les heures : garder celles >= à l'heure arrondie
-      return allHours.filter(h => h >= roundedHour);
+      // Filtrer les heures : garder celles >= à l'heure minimum
+      return allHours.filter(h => h >= minEventHour);
     }
     
     return allHours;
-  }, [isToday, isTomorrow, roundedHour]);
+  }, [isToday, isTomorrow, minEventHour]);
   
   // Minutes disponibles (seulement 00 ou 30)
   const availableMinutes = useMemo(() => {
@@ -103,23 +109,23 @@ export default function TimeSlotPicker({ value, onChange }) {
     }
     
     if (isToday) {
-      // Aujourd'hui : à partir de "now arrondi à +30min"
-      // Si on est sur l'heure arrondie, filtrer les minutes
-      if (currentHour === roundedHour) {
-        return allMinutes.filter(m => m >= roundedMinute);
+      // Aujourd'hui : à partir de l'heure minimum de l'événement
+      // Si on est sur l'heure minimum, filtrer les minutes
+      if (currentHour === minEventHour) {
+        return allMinutes.filter(m => m >= minEventMinute);
       }
       
-      // Si on est après l'heure arrondie, toutes les minutes sont disponibles
-      if (currentHour > roundedHour) {
+      // Si on est après l'heure minimum, toutes les minutes sont disponibles
+      if (currentHour > minEventHour) {
         return allMinutes;
       }
       
-      // Si on est avant l'heure arrondie, aucune minute disponible (ne devrait pas arriver)
+      // Si on est avant l'heure minimum, aucune minute disponible
       return [];
     }
     
     return allMinutes;
-  }, [isToday, isTomorrow, currentHour, roundedHour, roundedMinute]);
+  }, [isToday, isTomorrow, currentHour, minEventHour, minEventMinute]);
 
   const handleScroll = (type, ref) => {
     if (!ref.current) return;

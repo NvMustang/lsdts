@@ -129,9 +129,30 @@ function CreateView({ urlParams }) {
   }, [whenDateObj, confirmOffset]);
 
   const titleRemaining = TITLE_MAX_LENGTH - title.length;
+  
+  // Vérifier que la date est >= now arrondi à 30 min + 30 min
+  const isDateValid = (() => {
+    if (!whenDateObj) return false;
+    const now = new Date();
+    const currentMinute = now.getMinutes();
+    const currentHour = now.getHours();
+    let roundedMin = Math.ceil((currentMinute + 1) / 30) * 30;
+    let roundedH = currentHour;
+    if (roundedMin >= 60) {
+      roundedMin = 0;
+      roundedH += 1;
+    }
+    const nowRounded = new Date(now);
+    nowRounded.setHours(roundedH, roundedMin, 0, 0);
+    const minTimeForGuests = 30 * 60 * 1000; // 30 min
+    const minEventDate = new Date(nowRounded.getTime() + minTimeForGuests);
+    return whenDateObj.getTime() >= minEventDate.getTime();
+  })();
+  
   const canSubmit = title.trim().length > 0 && 
     title.length <= TITLE_MAX_LENGTH && 
     whenDateObj && 
+    isDateValid &&
     normalizeName(organizerName).length > 0;
 
   const offsetMs = offsetToMs(confirmOffset);
