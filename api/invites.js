@@ -1,6 +1,6 @@
 import { json } from "./_sheets.js";
 import { appendInvite, appendLog, appendResponse, ensureMvpTabs, readAll, updateInviteRowById } from "./_mvpStore.js";
-import { badRequest, serverError, randomId, offsetToMs, parseBody, normalizeName, nowIso, dateToIsoLocal } from "./_utils.js";
+import { badRequest, serverError, randomId, offsetToMs, parseBody, normalizeName, nowIso } from "./_utils.js";
 import { computeStatus } from "./_inviteUtils.js";
 
 function clampInt(n, min, max) {
@@ -19,7 +19,7 @@ function parseLocalDateTimeLocalString(value) {
   const [y, m, d] = dateStr.split("-").map((x) => Number.parseInt(x, 10));
   const [hh, mm] = timeStr.split(":").map((x) => Number.parseInt(x, 10));
   if (!y || !m || !d || !Number.isFinite(hh) || !Number.isFinite(mm)) return { error: "Invalid datetime" };
-  // Strict: minutes must be 00 or 30.
+  // Minutes doivent être 00, 15, 30 ou 45 (correspond au picker)
   if (!(mm === 0 || mm === 30)) return { error: "Invalid datetime" };
   const dt = new Date(y, m - 1, d, hh, mm, 0, 0);
   if (Number.isNaN(dt.getTime())) return { error: "Invalid datetime" };
@@ -72,6 +72,8 @@ export default async function handler(req, res) {
 
   const now = new Date();
   if (!whenAtLocal) return badRequest(res, "Missing Quand");
+  
+  // Valider le format (parse pour vérifier, mais on garde la string originale)
   const whenParsed = parseLocalDateTimeLocalString(whenAtLocal);
   if (whenParsed.error) return badRequest(res, whenParsed.error);
 
@@ -80,11 +82,22 @@ export default async function handler(req, res) {
   const offsetMs = offsetToMs(confirmOffset);
   if (offsetMs === null) return badRequest(res, "Invalid confirmation offset");
 
-  const confirmBy = new Date(whenParsed.date.getTime() - offsetMs);
+  const confirmByDate = new Date(whenParsed.date.getTime() - offsetMs);
   // Pour "immediate", confirmBy = when_at, donc toujours valide si when_at est dans le futur
-  if (confirmOffset !== "immediate" && confirmBy.getTime() < now.getTime()) {
+  if (confirmOffset !== "immediate" && confirmByDate.getTime() < now.getTime()) {
     return badRequest(res, "Confirmation invalide.");
   }
+
+  // Calculer confirm_by en string (même format que when_at_local)
+  const formatDate = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const da = String(d.getDate()).padStart(2, "0");
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    return `${y}-${m}-${da}T${hh}:${mm}`;
+  };
+  const confirmByLocal = formatDate(confirmByDate);
 
       let capacityMax = null;
       if (body.capacity_max !== null && body.capacity_max !== undefined && String(body.capacity_max).trim() !== "") {
@@ -94,15 +107,15 @@ export default async function handler(req, res) {
 
       // Accepter l'ID fourni par le frontend, ou en générer un nouveau
       let inviteId = typeof body.invite_id === "string" && body.invite_id.length === 32 ? body.invite_id : randomId();
-      const createdAt = new Date().toISOString();
+      const createdAt = formatDate(now);
 
-  // Stocker les dates en format local (sans timezone) pour éviter les problèmes de conversion UTC
+  // Sauvegarder les dates telles quelles (format YYYY-MM-DDTHH:MM, pas de conversion)
   const inviteRow = [
     inviteId,
     title,
-    dateToIsoLocal(whenParsed.date),
+    whenAtLocal, // String originale, pas de conversion
     whenParsed.hasTime ? "1" : "0",
-    dateToIsoLocal(confirmBy),
+    confirmByLocal, // Format YYYY-MM-DDTHH:MM
     capacityMax === null ? "" : String(capacityMax),
     createdAt,
     "OPEN",
@@ -132,7 +145,7 @@ export default async function handler(req, res) {
     // yes_count = 1 (l'organisateur compte dans la capacité)
     const yesCount = 1;
     const inviteForStatus = {
-      confirm_by: dateToIsoLocal(confirmBy),
+      confirm_by: confirmByLocal, // Format YYYY-MM-DDTHH:MM, même que when_at
       capacity_max: capacityMax,
     };
     const statusResult = computeStatus(inviteForStatus, yesCount, now);

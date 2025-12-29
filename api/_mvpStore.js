@@ -152,8 +152,10 @@ export async function appendLog({ type, inviteId = "", anonDeviceId = "", payloa
   const sid = spreadsheetId();
   const accessToken = await getAccessToken(SCOPE_RW);
   await ensureMvpTabs();
+  const d = new Date();
+  const formatDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   const row = [
-    new Date().toISOString(),
+    formatDate,
     type,
     inviteId,
     anonDeviceId,

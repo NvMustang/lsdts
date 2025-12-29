@@ -2,24 +2,19 @@ import React, { useEffect, useState } from "react";
 import TimeSlotPicker from "./components/TimeSlotPicker.jsx";
 import { createInvite, getInviteResponses, recordView, respond } from "./lib/api.js";
 import { 
-  formatWhen, 
-  formatConfirm,
-  formatClosure,
-  dateToWhenAtLocal,
-  dateToIsoLocal,
-  parseIsoLocal,
   normalizeName,
   parseCapacityMax,
   offsetToMs,
-  getAvailableOffsets,
   getDefaultWhenDate,
+  getAvailableOffsets,
   parseUrlParams,
   generateId,
   getAnonDeviceId,
   getUserName,
   saveUserName,
   buildShareUrl,
-  formatStatus
+  formatStatus,
+  parseLocalDate
 } from "./lib/utils.js";
 
 const TITLE_MAX_LENGTH = 40;
@@ -85,23 +80,53 @@ function CreateView({ urlParams }) {
   const [showCapacity, setShowCapacity] = useState(false);
   
   const initialWhenDate = prefillWhen 
-    ? (parseIsoLocal(prefillWhen) || getDefaultWhenDate())
+    ? (parseLocalDate(prefillWhen) || getDefaultWhenDate())
     : getDefaultWhenDate();
   const [whenDateObj, setWhenDateObj] = useState(initialWhenDate);
   const [confirmOffset, setConfirmOffset] = useState("30m");
+  const [availableOffsets, setAvailableOffsets] = useState([]);
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  const whenAtLocal = dateToWhenAtLocal(whenDateObj);
-  const deltaMs = whenDateObj ? whenDateObj.getTime() - Date.now() : null;
-  const availableOffsets = getAvailableOffsets(deltaMs);
-
+  // Calculer les offsets disponibles selon le delta effectif
   useEffect(() => {
-    if (availableOffsets.length === 0) {
-      setConfirmOffset("immediate");
-    } else if (!availableOffsets.some((opt) => opt.value === confirmOffset)) {
-      setConfirmOffset(availableOffsets[0].value);
+    if (!whenDateObj) {
+      setAvailableOffsets([]);
+      return;
     }
-  }, [availableOffsets, confirmOffset]);
+    
+    // Calculer le delta effectif (now arrondi à 30min sup + 30min pour les guests)
+    const now = new Date();
+    const currentMinute = now.getMinutes();
+    const currentHour = now.getHours();
+    let roundedMin = Math.ceil((currentMinute + 1) / 30) * 30;
+    let roundedH = currentHour;
+    if (roundedMin >= 60) {
+      roundedMin = 0;
+      roundedH += 1;
+    }
+    const nowRounded = new Date(now);
+    nowRounded.setHours(roundedH, roundedMin, 0, 0);
+    const minTimeForGuests = 30 * 60 * 1000; // 30 min
+    const effectiveDeltaMs = whenDateObj.getTime() - (nowRounded.getTime() + minTimeForGuests);
+    const effectiveDeltaMinutes = effectiveDeltaMs / (60 * 1000);
+    
+    // Si delta effectif < 30 min → imposer "immediate" (pas de sélecteur)
+    if (effectiveDeltaMinutes < 30) {
+      setAvailableOffsets([]);
+      setConfirmOffset("immediate");
+      return;
+    }
+    
+    // Sinon → sélecteur avec options disponibles
+    const offsets = getAvailableOffsets(whenDateObj);
+    setAvailableOffsets(offsets);
+    
+    // Si l'offset actuel n'est plus disponible, réinitialiser à 30m (par défaut)
+    const currentAvailable = offsets.find(o => o.value === confirmOffset);
+    if (!currentAvailable) {
+      setConfirmOffset("30m");
+    }
+  }, [whenDateObj, confirmOffset]);
 
   const titleRemaining = TITLE_MAX_LENGTH - title.length;
   const canSubmit = title.trim().length > 0 && 
@@ -113,9 +138,6 @@ function CreateView({ urlParams }) {
   const confirmationAt = whenDateObj && offsetMs !== null
     ? new Date(whenDateObj.getTime() - offsetMs)
     : null;
-  const confirmationInvalid = confirmationAt && confirmOffset !== "immediate"
-    ? confirmationAt.getTime() < Date.now()
-    : false;
 
   const handleCreate = async () => {
     if (!canSubmit || !whenDateObj) return;
@@ -123,17 +145,23 @@ function CreateView({ urlParams }) {
     // Validation capacityMax
     const capacityMaxValue = parseCapacityMax(capacityMax);
     
-    // Validation confirmation
-    if (confirmationInvalid) return;
 
     const id = generateId();
     localStorage.setItem(`lsdts:organizer:${id}`, "1");
 
     // Préparer les valeurs minimales pour l'URL (redirection immédiate)
-    // Utiliser le format local (sans timezone) pour éviter les problèmes de conversion UTC
+    // Format simple : YYYY-MM-DDTHH:MM (sans secondes, sans conversion)
     const titleValue = title.trim();
-    const whenAtValue = dateToIsoLocal(whenDateObj);
-    const confirmByValue = confirmationAt ? dateToIsoLocal(confirmationAt) : dateToIsoLocal(whenDateObj);
+    const formatDate = (d) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const da = String(d.getDate()).padStart(2, "0");
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mm = String(d.getMinutes()).padStart(2, "0");
+      return `${y}-${m}-${da}T${hh}:${mm}`;
+    };
+    const whenAtValue = formatDate(whenDateObj);
+    const confirmByValue = confirmationAt ? formatDate(confirmationAt) : formatDate(whenDateObj);
     
     // Construire l'URL directement vers la page principale avec tous les paramètres
     // Évite le passage par /i/{inviteId} qui pourrait ne pas avoir l'invitation encore dans le backend
@@ -146,11 +174,10 @@ function CreateView({ urlParams }) {
       url.searchParams.set('m', String(capacityMaxValue));
     }
 
-    // Préparer le payload API (calcul différé pour ne pas bloquer la redirection)
-    const currentWhenAtLocal = dateToWhenAtLocal(whenDateObj);
+    // Préparer le payload API - même format que l'URL (pas de conversion)
     const payload = {
       title: titleValue,
-      when_at_local: currentWhenAtLocal,
+      when_at_local: whenAtValue,
       confirm_offset: confirmOffset,
       organizer_name: normalizeName(organizerName) || null,
       invite_id: id,
@@ -215,7 +242,12 @@ function CreateView({ urlParams }) {
               <input
                 id="whenAt"
                 className="input"
-                value={whenDateObj ? formatWhen({when_at: whenDateObj.toISOString(), when_has_time: true}) : ""}
+                value={whenDateObj ? (() => {
+                  const d = whenDateObj;
+                  const base = d.toLocaleString("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit" });
+                  const time = d.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+                  return `${base} ${time}`;
+                })() : ""}
                 onClick={() => setPickerOpen(true)}
                 readOnly
                 placeholder="Sélectionner une date"
@@ -225,31 +257,39 @@ function CreateView({ urlParams }) {
           </div>
 
           <div className="formRow">
-            <div className="formLabel">Confirmation</div>
+            <label className="formLabel" htmlFor="confirmOffset">
+              Confirmation
+            </label>
             <div className="formControl">
-              {availableOffsets.length === 0 ? (
+              {confirmOffset === "immediate" ? (
                 <>
                   <div className="input" style={{ cursor: 'default' }}>
-                    Confirmation : immédiate
+                    Immédiate
                   </div>
                   <div className="formHelper">Réponses ouvertes jusqu'à l'événement</div>
                 </>
               ) : (
                 <>
                   <select
+                    id="confirmOffset"
                     className="input"
                     value={confirmOffset}
                     onChange={(e) => setConfirmOffset(e.target.value)}
-                    aria-label="Confirmation"
+                    disabled={availableOffsets.length === 0}
                   >
-                    {availableOffsets.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
+                    {availableOffsets.map(({ value, label }) => (
+                      <option key={value} value={value}>
+                        {label}
                       </option>
                     ))}
                   </select>
                   <div className="formHelper">
-                    {whenDateObj && confirmationAt && `Clôture : ${formatClosure(confirmationAt)}`}
+                    {whenDateObj && confirmationAt && (() => {
+                      const d = confirmationAt;
+                      const day = d.toLocaleString("fr-FR", { weekday: "short" });
+                      const time = d.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+                      return `Clôture : ${day} ${time}`;
+                    })()}
                   </div>
                 </>
               )}
@@ -327,7 +367,7 @@ function CreateView({ urlParams }) {
           className="btn btnPrimary"
           type="button"
           onClick={handleCreate}
-          disabled={!canSubmit || (confirmationInvalid && confirmOffset !== "immediate")}
+          disabled={!canSubmit}
         >
           Lancer l'invitation
         </button>
@@ -546,8 +586,61 @@ function InviteContainer({ inviteId, urlParams }) {
 
   const invite = invitation?.invite;
   if (!invite) return null;
-  const whenText = formatWhen(invite);
-  const confirmText = formatConfirm(invite);
+  
+  // Formatage simple inline - utiliser parseLocalDate pour éviter les problèmes UTC
+  const whenText = (() => {
+    if (!invite?.when_at) return "";
+    const d = parseLocalDate(invite.when_at);
+    if (!d) return "";
+    const base = d.toLocaleString("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit" });
+    if (!invite.when_has_time) return base;
+    const time = d.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    return `${base} ${time}`;
+  })();
+  
+  const confirmText = (() => {
+    if (!invite?.confirm_by || !invite?.when_at) return "";
+    const c = parseLocalDate(invite.confirm_by);
+    const w = parseLocalDate(invite.when_at);
+    if (!c || !w) return "";
+    
+    // Si confirm_by = when_at → immédiate (géré dans l'affichage principal)
+    if (c.getTime() === w.getTime()) {
+      return "";
+    }
+    
+    // Calculer le delta
+    const deltaMs = w.getTime() - c.getTime();
+    const deltaHours = deltaMs / (60 * 60 * 1000);
+    const deltaMinutes = deltaMs / (60 * 1000);
+    
+    // Formater l'heure
+    const time = c.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    
+    // Formater le delta
+    let deltaText = "";
+    if (deltaMinutes < 60) {
+      deltaText = `${Math.round(deltaMinutes)} min avant`;
+    } else {
+      const hours = Math.round(deltaHours * 10) / 10;
+      if (hours < 24) {
+        if (hours === Math.floor(hours)) {
+          deltaText = `${Math.floor(hours)} h avant`;
+        } else {
+          deltaText = `${hours} h avant`;
+        }
+      } else {
+        const daysDiff = Math.floor(deltaHours / 24);
+        if (daysDiff === 1) {
+          deltaText = "la veille";
+        } else {
+          deltaText = `${daysDiff} jours avant`;
+        }
+      }
+    }
+    
+    return `${time} (${deltaText})`;
+  })();
 
   // Récupérer capacity_max uniquement depuis l'URL (paramètre m) - source unique de vérité
   const mValue = urlParams.m;
@@ -599,7 +692,20 @@ function InviteContainer({ inviteId, urlParams }) {
       <div className="section">
         <h1 className="title">{invite.title}</h1>
         <p className="muted">{whenText}</p>
-        <p className="muted">Confirmation avant {confirmText}</p>
+        <p className="muted">
+          {(() => {
+            // Logique simple : si confirm_by = when_at → immédiate
+            if (invite?.confirm_by && invite?.when_at) {
+              const c = parseLocalDate(invite.confirm_by);
+              const w = parseLocalDate(invite.when_at);
+              if (c && w && c.getTime() === w.getTime()) {
+                return "Confirmation immédiate";
+              }
+            }
+            // Sinon : afficher "Confirmation avant {heure} ({delta})"
+            return confirmText ? `Confirmation avant ${confirmText}` : "";
+          })()}
+        </p>
         <p className="muted">
           {invite.capacity_max !== null ? `Capacité : ${invite.capacity_max} personnes` : ""}
         </p>

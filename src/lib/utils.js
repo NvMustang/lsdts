@@ -54,120 +54,33 @@ export function formatStatus(status) {
   return status;
 }
 
-// Formatage de dates
-export function formatWhen(invite) {
-  if (!invite?.when_at) return "";
-  // Essayer d'abord le format local (sans timezone), sinon le format ISO standard
-  const d = parseIsoLocal(invite.when_at) || new Date(invite.when_at);
-  if (Number.isNaN(d.getTime())) return "";
-  const base = d.toLocaleString("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit" });
-  if (!invite.when_has_time) return base;
-  const time = d.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-  return `${base} ${time}`;
-}
-
-export function formatConfirm(invite) {
-  if (!invite?.confirm_by) return "";
-  // Essayer d'abord le format local (sans timezone), sinon le format ISO standard
-  const c = parseIsoLocal(invite.confirm_by) || new Date(invite.confirm_by);
-  if (Number.isNaN(c.getTime())) return "";
-  if (!invite?.when_at) return c.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-  const w = parseIsoLocal(invite.when_at) || new Date(invite.when_at);
-  if (Number.isNaN(w.getTime())) return c.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-  
-  const sameDay =
-    c.getFullYear() === w.getFullYear() && c.getMonth() === w.getMonth() && c.getDate() === w.getDate();
-  const time = c.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-  
-  // Calculer l'offset relatif pour ajouter du contexte
-  const deltaMs = w.getTime() - c.getTime();
-  const deltaHours = deltaMs / (60 * 60 * 1000);
-  const deltaMinutes = deltaMs / (60 * 1000);
-  
-  let relativeContext = "";
-  if (sameDay) {
-    // Même jour : afficher l'offset en heures/minutes
-    if (deltaMinutes < 60) {
-      relativeContext = ` (${Math.round(deltaMinutes)} min avant)`;
-    } else if (deltaHours < 24) {
-      const hours = Math.round(deltaHours * 10) / 10; // Arrondir à 0.1 h près
-      if (hours === Math.floor(hours)) {
-        relativeContext = ` (${Math.floor(hours)} h avant)`;
-      } else {
-        relativeContext = ` (${hours} h avant)`;
-      }
-    }
-  } else {
-    // Vérifier si c'est la veille (entre 20h et 24h avant)
-    const daysDiff = Math.floor((w.getTime() - c.getTime()) / (24 * 60 * 60 * 1000));
-    if (daysDiff === 1) {
-      relativeContext = " (la veille)";
-    }
-  }
-  
-  if (sameDay) {
-    return `${time}${relativeContext}`;
-  }
-  const date = c.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit" });
-  return `${date} ${time}${relativeContext}`;
-}
-
-export function formatClosure(date) {
-  const day = date.toLocaleString("fr-FR", { weekday: "short" });
-  const time = date.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-  return `${day} ${time}`;
-}
-
-// Conversion Date ↔ string
-export function dateToWhenAtLocal(date) {
-  if (!date) return "";
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const da = String(date.getDate()).padStart(2, "0");
-  const hh = String(date.getHours()).padStart(2, "0");
-  const mm = String(date.getMinutes()).padStart(2, "0");
-  return `${y}-${m}-${da}T${hh}:${mm}`;
-}
-
-// Convertit une Date en format ISO local (sans timezone) pour éviter les problèmes de conversion UTC
-// Format: YYYY-MM-DDTHH:MM:SS (sans le Z final)
-export function dateToIsoLocal(date) {
-  if (!date) return "";
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const da = String(date.getDate()).padStart(2, "0");
-  const hh = String(date.getHours()).padStart(2, "0");
-  const mm = String(date.getMinutes()).padStart(2, "0");
-  const ss = String(date.getSeconds()).padStart(2, "0");
-  return `${y}-${m}-${da}T${hh}:${mm}:${ss}`;
-}
-
-// Parse une date ISO locale (sans timezone) en Date, en l'interprétant comme heure locale
-// Accepte les formats: YYYY-MM-DDTHH:MM:SS ou YYYY-MM-DDTHH:MM
-export function parseIsoLocal(isoString) {
-  if (!isoString) return null;
-  const s = String(isoString).trim();
-  // Enlever le Z final s'il existe (format UTC)
-  const clean = s.endsWith("Z") ? s.slice(0, -1) : s;
-  const parts = clean.split("T");
-  if (parts.length !== 2) return null;
-  const [dateStr, timeStr] = parts;
-  const [y, m, d] = dateStr.split("-").map((x) => Number.parseInt(x, 10));
-  const timeParts = timeStr.split(":");
-  const hh = Number.parseInt(timeParts[0] || "0", 10);
-  const mm = Number.parseInt(timeParts[1] || "0", 10);
-  const ss = Number.parseInt(timeParts[2] || "0", 10);
-  
-  if (!y || !m || !d || !Number.isFinite(hh) || !Number.isFinite(mm)) return null;
-  
-  // Créer une date en heure locale (sans conversion UTC)
-  const dt = new Date(y, m - 1, d, hh, mm, ss, 0);
-  if (Number.isNaN(dt.getTime())) return null;
-  return dt;
-}
 
 export function normalizeName(name) {
   return String(name || "").trim().replace(/\s+/g, " ");
+}
+
+// Parse une date locale (format YYYY-MM-DDTHH:MM) en Date, en l'interprétant comme heure locale
+export function parseLocalDate(dateString) {
+  if (!dateString || typeof dateString !== "string") return null;
+  const s = dateString.trim();
+  if (!s) return null;
+  
+  // Parser manuellement pour interpréter comme heure locale (évite UTC)
+  const parts = s.split("T");
+  if (parts.length === 2) {
+    const [dateStr, timeStr] = parts;
+    const [y, m, d] = dateStr.split("-").map((x) => Number.parseInt(x, 10));
+    const timeParts = timeStr.split(":");
+    const hh = Number.parseInt(timeParts[0] || "0", 10);
+    const mm = Number.parseInt(timeParts[1] || "0", 10);
+    
+    if (y && m && d && Number.isFinite(hh) && Number.isFinite(mm)) {
+      const dateObj = new Date(y, m - 1, d, hh, mm, 0, 0);
+      if (!Number.isNaN(dateObj.getTime())) return dateObj;
+    }
+  }
+  
+  return null;
 }
 
 // Parse et valide capacityMax (2-10 personnes)
@@ -190,34 +103,12 @@ export function offsetToMs(offset) {
   return null;
 }
 
-// Options de confirmation disponibles (usage interne)
-const CONFIRM_OFFSETS = [
-  { value: "30m", label: "30 min avant" },
-  { value: "1h", label: "1 h avant" },
-  { value: "3h", label: "3 h avant" },
-  { value: "8h", label: "8 h avant" },
-  { value: "eve", label: "La veille" },
-];
-
-// Filtre les offsets disponibles selon le delta restant
-export function getAvailableOffsets(deltaMs) {
-  if (deltaMs === null || deltaMs <= 0) return [];
-  const deltaHours = deltaMs / (60 * 60 * 1000);
-  const deltaMinutes = deltaMs / (60 * 1000);
-
-  if (deltaMinutes <= 30) return [];
-  if (deltaHours <= 1) return [CONFIRM_OFFSETS[0]];
-  if (deltaHours <= 3) return CONFIRM_OFFSETS.slice(0, 2);
-  if (deltaHours <= 8) return CONFIRM_OFFSETS.slice(0, 3);
-  return CONFIRM_OFFSETS;
-}
-
-// Génère la date par défaut (now + 1h, arrondie, dans les limites 6h-23h)
+// Génère la date par défaut (now + 1h, arrondie à 30min)
 export function getDefaultWhenDate() {
   const now = new Date();
   const defaultDate = new Date(now.getTime() + 60 * 60 * 1000); // +1h
   
-  // Arrondir à la demi-heure supérieure
+  // Arrondir à la 30 min supérieure
   const minutes = defaultDate.getMinutes();
   if (minutes > 30) {
     defaultDate.setMinutes(0);
@@ -228,24 +119,55 @@ export function getDefaultWhenDate() {
     defaultDate.setMinutes(0);
   }
   
-  // Vérifier si la date dépasse demain 23:45
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(23, 45, 0, 0);
-  
-  if (defaultDate > tomorrow) {
-    // Si la date dépasse demain 23:45, la limiter à demain 23:45
-    defaultDate.setTime(tomorrow.getTime());
-  }
-  
-  // S'assurer que la date est dans la plage valide (aujourd'hui à J+7)
-  const maxDate = new Date();
-  maxDate.setDate(maxDate.getDate() + 7);
-  maxDate.setHours(23, 59, 59, 999);
-  if (defaultDate > maxDate) {
-    return null;
-  }
-  
   return defaultDate;
+}
+
+// Retourne les offsets disponibles selon le delta effectif
+// Delta effectif = when_at - (now arrondi à 30min sup + 30min pour laisser du temps aux guests)
+// "Immédiate" n'est jamais dans le sélecteur, c'est imposé si delta effectif < 30 min
+export function getAvailableOffsets(whenDateObj) {
+  if (!whenDateObj) return [];
+  
+  const now = new Date();
+  const currentMinute = now.getMinutes();
+  const currentHour = now.getHours();
+  
+  // Arrondir now à la 30 min supérieure (20:08 → 20:30, 20:30 → 21:00)
+  let roundedMin = Math.ceil((currentMinute + 1) / 30) * 30;
+  let roundedH = currentHour;
+  if (roundedMin >= 60) {
+    roundedMin = 0;
+    roundedH += 1;
+  }
+  
+  const nowRounded = new Date(now);
+  nowRounded.setHours(roundedH, roundedMin, 0, 0);
+  
+  // Delta effectif = when_at - (now arrondi + 30 min pour laisser du temps aux guests)
+  const minTimeForGuests = 30 * 60 * 1000; // 30 min
+  const effectiveDeltaMs = whenDateObj.getTime() - (nowRounded.getTime() + minTimeForGuests);
+  const effectiveDeltaMinutes = effectiveDeltaMs / (60 * 1000);
+  
+  // Si delta effectif < 30 min, aucune option dans le sélecteur (immédiate imposé)
+  if (effectiveDeltaMinutes < 30) {
+    return [];
+  }
+  
+  // Sinon, retourner les options disponibles selon le delta effectif
+  const allOffsets = [
+    { value: "30m", label: "30 min avant" },
+    { value: "1h", label: "1 h avant" },
+    { value: "3h", label: "3 h avant" },
+    { value: "8h", label: "8 h avant" },
+    { value: "eve", label: "La veille" },
+  ];
+  
+  // Filtrer selon le delta effectif (30m toujours disponible si delta effectif >= 30 min)
+  return allOffsets.filter(({ value }) => {
+    const offsetMs = offsetToMs(value);
+    if (offsetMs === null) return false;
+    // L'offset doit être inférieur ou égal au delta effectif
+    return offsetMs <= effectiveDeltaMs;
+  });
 }
 

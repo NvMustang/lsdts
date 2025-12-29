@@ -27,22 +27,14 @@ export function normalizeName(name) {
 }
 
 export function nowIso() {
-  return new Date().toISOString();
-}
-
-/**
- * Convertit une Date en format ISO local (sans timezone) pour éviter les problèmes de conversion UTC
- * Format: YYYY-MM-DDTHH:MM:SS (sans le Z final)
- */
-export function dateToIsoLocal(date) {
-  if (!date || !(date instanceof Date) || Number.isNaN(date.getTime())) return "";
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const da = String(date.getDate()).padStart(2, "0");
-  const hh = String(date.getHours()).padStart(2, "0");
-  const mm = String(date.getMinutes()).padStart(2, "0");
-  const ss = String(date.getSeconds()).padStart(2, "0");
-  return `${y}-${m}-${da}T${hh}:${mm}:${ss}`;
+  // Format simple : YYYY-MM-DDTHH:MM (sans secondes, cohérent avec le reste)
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const da = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${y}-${m}-${da}T${hh}:${mm}`;
 }
 
 export function randomId() {
@@ -65,52 +57,33 @@ export function offsetToMs(offset) {
   return null;
 }
 
-/**
- * Parse une date qui peut être soit en format local (sans timezone) soit en format UTC (avec Z)
- * Si la date se termine par "Z", elle est interprétée comme UTC
- * Sinon, elle est interprétée comme heure locale
- */
+// Parse une date - version simplifiée, utilise directement new Date()
 export function parseDateLocalOrUtc(dateString) {
   if (!dateString || typeof dateString !== "string") return null;
   const s = dateString.trim();
   if (!s) return null;
   
-  // Si la date se termine par "Z", c'est du UTC - utiliser new Date() directement
-  if (s.endsWith("Z")) {
-    const d = new Date(s);
-    return Number.isNaN(d.getTime()) ? null : d;
+  // Si format local (YYYY-MM-DDTHH:MM:SS), parser manuellement pour éviter UTC
+  if (!s.endsWith("Z")) {
+    const parts = s.split("T");
+    if (parts.length === 2) {
+      const [dateStr, timeStr] = parts;
+      const [y, m, d] = dateStr.split("-").map((x) => Number.parseInt(x, 10));
+      const timeParts = timeStr.split(":");
+      const hh = Number.parseInt(timeParts[0] || "0", 10);
+      const mm = Number.parseInt(timeParts[1] || "0", 10);
+      const ss = Number.parseInt(timeParts[2] || "0", 10);
+      
+      if (y && m && d && Number.isFinite(hh) && Number.isFinite(mm)) {
+        const dateObj = new Date(y, m - 1, d, hh, mm, ss, 0);
+        if (!Number.isNaN(dateObj.getTime())) return dateObj;
+      }
+    }
   }
   
-  // Sinon, c'est probablement du format local (YYYY-MM-DDTHH:MM:SS ou YYYY-MM-DDTHH:MM)
-  // Parser manuellement pour interpréter comme heure locale
-  const parts = s.split("T");
-  if (parts.length !== 2) {
-    // Essayer quand même avec new Date() au cas où
-    const d = new Date(s);
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
-  
-  const [dateStr, timeStr] = parts;
-  const dateParts = dateStr.split("-");
-  if (dateParts.length !== 3) {
-    const d = new Date(s);
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
-  
-  const [y, m, d] = dateParts.map((x) => Number.parseInt(x, 10));
-  const timeParts = timeStr.split(":");
-  const hh = Number.parseInt(timeParts[0] || "0", 10);
-  const mm = Number.parseInt(timeParts[1] || "0", 10);
-  const ss = Number.parseInt(timeParts[2] || "0", 10);
-  
-  if (!y || !m || !d || !Number.isFinite(hh) || !Number.isFinite(mm)) {
-    const dateObj = new Date(s);
-    return Number.isNaN(dateObj.getTime()) ? null : dateObj;
-  }
-  
-  // Créer une date en heure locale (sans conversion UTC)
-  const dateObj = new Date(y, m - 1, d, hh, mm, ss, 0);
-  return Number.isNaN(dateObj.getTime()) ? null : dateObj;
+  // Fallback : utiliser new Date() directement
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 // Trouve une invitation dans les rows parsées

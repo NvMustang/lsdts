@@ -14,6 +14,7 @@ function escapeHtml(s) {
 }
 
 function formatWhen(invite) {
+  if (!invite?.when_at) return "";
   const d = parseDateLocalOrUtc(invite.when_at);
   if (!d) return "";
   const base = d.toLocaleString("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit" });
@@ -23,44 +24,47 @@ function formatWhen(invite) {
 }
 
 function formatConfirm(invite) {
+  if (!invite?.confirm_by || !invite?.when_at) return "";
   const c = parseDateLocalOrUtc(invite.confirm_by);
   const w = parseDateLocalOrUtc(invite.when_at);
   if (!c || !w) return "";
-  const sameDay =
-    c.getFullYear() === w.getFullYear() && c.getMonth() === w.getMonth() && c.getDate() === w.getDate();
-  const time = c.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
   
-  // Calculer l'offset relatif pour ajouter du contexte
+  // Si confirm_by = when_at → immédiate (géré dans l'affichage principal)
+  if (c.getTime() === w.getTime()) {
+    return "";
+  }
+  
+  // Calculer le delta
   const deltaMs = w.getTime() - c.getTime();
   const deltaHours = deltaMs / (60 * 60 * 1000);
   const deltaMinutes = deltaMs / (60 * 1000);
   
-  let relativeContext = "";
-  if (sameDay) {
-    // Même jour : afficher l'offset en heures/minutes
-    if (deltaMinutes < 60) {
-      relativeContext = ` (${Math.round(deltaMinutes)} min avant)`;
-    } else if (deltaHours < 24) {
-      const hours = Math.round(deltaHours * 10) / 10; // Arrondir à 0.1 h près
-      if (hours === Math.floor(hours)) {
-        relativeContext = ` (${Math.floor(hours)} h avant)`;
-      } else {
-        relativeContext = ` (${hours} h avant)`;
-      }
-    }
+  // Formater l'heure
+  const time = c.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  
+  // Formater le delta
+  let deltaText = "";
+  if (deltaMinutes < 60) {
+    deltaText = `${Math.round(deltaMinutes)} min avant`;
   } else {
-    // Vérifier si c'est la veille (entre 20h et 24h avant)
-    const daysDiff = Math.floor((w.getTime() - c.getTime()) / (24 * 60 * 60 * 1000));
-    if (daysDiff === 1) {
-      relativeContext = " (la veille)";
+    const hours = Math.round(deltaHours * 10) / 10;
+    if (hours < 24) {
+      if (hours === Math.floor(hours)) {
+        deltaText = `${Math.floor(hours)} h avant`;
+      } else {
+        deltaText = `${hours} h avant`;
+      }
+    } else {
+      const daysDiff = Math.floor(deltaHours / 24);
+      if (daysDiff === 1) {
+        deltaText = "la veille";
+      } else {
+        deltaText = `${daysDiff} jours avant`;
+      }
     }
   }
   
-  if (sameDay) {
-    return `${time}${relativeContext}`;
-  }
-  const date = c.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit" });
-  return `${date} ${time}${relativeContext}`;
+  return `${time} (${deltaText})`;
 }
 
 
@@ -85,7 +89,23 @@ export default async function handler(req, res) {
       descriptionParts.push(whenText);
     }
     if (confirmText) {
-      descriptionParts.push(`Confirmation avant ${confirmText}`);
+      // Si confirm_by = when_at → immédiate
+      const isImmediate = (() => {
+        if (invite?.confirm_by && invite?.when_at) {
+          const c = parseDateLocalOrUtc(invite.confirm_by);
+          const w = parseDateLocalOrUtc(invite.when_at);
+          if (c && w && c.getTime() === w.getTime()) {
+            return true;
+          }
+        }
+        return false;
+      })();
+      
+      if (isImmediate) {
+        descriptionParts.push("Confirmation immédiate");
+      } else {
+        descriptionParts.push(`Confirmation avant ${confirmText}`);
+      }
     }
     if (invite?.capacity_max !== null && invite?.capacity_max !== undefined) {
       descriptionParts.push(`Capacité : ${invite.capacity_max} personnes`);

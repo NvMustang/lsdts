@@ -27,8 +27,8 @@ export default function TimeSlotPicker({ value, onChange }) {
   const currentHour = currentDate.getHours();
   const currentMinute = currentDate.getMinutes();
   
-  // Arrondir à 00, 15, 30 ou 45 (pour la date sélectionnée)
-  const currentRoundedMinute = Math.floor(currentMinute / 15) * 15;
+  // Arrondir à 00 ou 30 (pour la date sélectionnée)
+  const currentRoundedMinute = Math.floor(currentMinute / 30) * 30;
   
   // Vérifier si la date sélectionnée est aujourd'hui
   const todayKey = useMemo(() => {
@@ -46,15 +46,15 @@ export default function TimeSlotPicker({ value, onChange }) {
   }, []);
   const isTomorrow = currentDateKey === tomorrowKey;
   
-  // Calculer "now arrondi à +15min" pour la limite minimale
+  // Calculer "now arrondi à +30min" pour la limite minimale
   const { nowHour, nowMinute, roundedHour, roundedMinute } = useMemo(() => {
     const now = new Date();
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
     
-    // Arrondir à +15min : si on est à 14:37, on arrondit à 14:45
-    // Si on est à 14:45, on arrondit à 15:00
-    let roundedMin = Math.ceil((currentMinute + 1) / 15) * 15;
+    // Arrondir à +30min : si on est à 20:08, on arrondit à 20:30
+    // Si on est à 20:30, on arrondit à 21:00
+    let roundedMin = Math.ceil((currentMinute + 1) / 30) * 30;
     let roundedH = currentHour;
     
     // Si on dépasse 60 minutes, passer à l'heure suivante
@@ -93,20 +93,17 @@ export default function TimeSlotPicker({ value, onChange }) {
     return allHours;
   }, [isToday, isTomorrow, roundedHour]);
   
-  // Minutes disponibles
+  // Minutes disponibles (seulement 00 ou 30)
   const availableMinutes = useMemo(() => {
-    const allMinutes = [0, 15, 30, 45];
+    const allMinutes = [0, 30];
     
     if (isTomorrow) {
-      // Demain : jusqu'à 23:45, donc toutes les minutes sauf si on est à 23h
-      if (currentHour === 23) {
-        return allMinutes.filter(m => m <= 45); // Limiter à 45 pour 23:45 max
-      }
+      // Demain : toutes les minutes (00 ou 30)
       return allMinutes;
     }
     
     if (isToday) {
-      // Aujourd'hui : à partir de "now arrondi à +15min"
+      // Aujourd'hui : à partir de "now arrondi à +30min"
       // Si on est sur l'heure arrondie, filtrer les minutes
       if (currentHour === roundedHour) {
         return allMinutes.filter(m => m >= roundedMinute);
