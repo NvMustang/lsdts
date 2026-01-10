@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import TimeSlotPicker from "./components/TimeSlotPicker.jsx";
 import { createInvite, getInviteResponses, recordView, respond } from "./lib/api.js";
 import { 
@@ -31,34 +31,31 @@ function PageShell({ children }) {
   );
 }
 
-function ParticipantsList({ participants, capacityMax, yesCount, show }) {
+function ParticipantsList({ participants, show, label }) {
   const currentUserName = getUserName();
   const currentNormalized = normalizeName(currentUserName);
-  
-  // Label centralisé : même format pour orga et guest
-  const displayLabel = capacityMax != null
-    ? `Participants (${yesCount || participants.length} sur ${capacityMax})`
-    : "Participants";
   
   // Structure HTML centralisée - toujours présente, contenu conditionnel
   return (
     <div>
-      {show && <p className="subtitle" style={{ paddingBottom: '12px' }}>{displayLabel}</p>}
       {show && (
-        <div className="proposal">
-          <p className="proposalText">
-            {participants.map((name, idx) => {
-              const normalized = normalizeName(name);
-              const isCurrentUser = normalized === currentNormalized && currentNormalized.length > 0;
-              return (
-                <React.Fragment key={idx}>
-                  <span className={isCurrentUser ? "youHighlight" : ""}>{name}</span>
-                  {idx < participants.length - 1 ? "\n" : ""}
-                </React.Fragment>
-              );
-            })}
-          </p>
-        </div>
+        <>
+          <p className="subtitle" style={{ paddingBottom: '12px' }}>{label || "Participants"}</p>
+          <div className="proposal">
+            <p className="proposalText">
+              {participants.map((name, idx) => {
+                const normalized = normalizeName(name);
+                const isCurrentUser = normalized === currentNormalized && currentNormalized.length > 0;
+                return (
+                  <React.Fragment key={idx}>
+                    <span className={isCurrentUser ? "youHighlight" : ""}>{name}</span>
+                    {idx < participants.length - 1 ? "\n" : ""}
+                  </React.Fragment>
+                );
+              })}
+            </p>
+          </div>
+        </>
       )}
     </div>
   );
@@ -76,6 +73,7 @@ function CreateView({ urlParams }) {
   
   const [title, setTitle] = useState(prefillTitle);
   const [organizerName, setOrganizerName] = useState(getUserName());
+  const [capacityMin, setCapacityMin] = useState("2");
   const [capacityMax, setCapacityMax] = useState("");
   const [showCapacity, setShowCapacity] = useState(false);
   
@@ -149,11 +147,16 @@ function CreateView({ urlParams }) {
     return whenDateObj.getTime() >= minEventDate.getTime();
   })();
   
+  // Validation capacityMin
+  const capacityMinValue = parseCapacityMax(capacityMin);
+  const isValidCapacityMin = capacityMinValue !== null && capacityMinValue >= 2;
+  
   const canSubmit = title.trim().length > 0 && 
     title.length <= TITLE_MAX_LENGTH && 
     whenDateObj && 
     isDateValid &&
-    normalizeName(organizerName).length > 0;
+    normalizeName(organizerName).length > 0 &&
+    isValidCapacityMin;
 
   const offsetMs = offsetToMs(confirmOffset);
   const confirmationAt = whenDateObj && offsetMs !== null
@@ -163,9 +166,19 @@ function CreateView({ urlParams }) {
   const handleCreate = async () => {
     if (!canSubmit || !whenDateObj) return;
     
-    // Validation capacityMax
+    // Validation capacityMin et capacityMax
+    const capacityMinValue = parseCapacityMax(capacityMin);
     const capacityMaxValue = parseCapacityMax(capacityMax);
     
+    if (!capacityMinValue || capacityMinValue < 2) {
+      // capacityMin doit être au moins 2
+      return;
+    }
+    
+    // Validation : capacityMax doit être >= capacityMin si défini
+    if (capacityMaxValue !== null && capacityMaxValue < capacityMinValue) {
+      return;
+    }
 
     const id = generateId();
     localStorage.setItem(`lsdts:organizer:${id}`, "1");
@@ -202,6 +215,7 @@ function CreateView({ urlParams }) {
       confirm_offset: confirmOffset,
       organizer_name: normalizeName(organizerName) || null,
       invite_id: id,
+      capacity_min: capacityMinValue,
       capacity_max: capacityMaxValue,
     };
 
@@ -319,7 +333,7 @@ function CreateView({ urlParams }) {
 
           <div className="formRow">
             <label className="formLabel" htmlFor="organizerName">
-              Ton prénom
+              Nom
             </label>
             <div className="formControl">
               <input
@@ -344,7 +358,7 @@ function CreateView({ urlParams }) {
                 className="formLabel" 
                 onClick={() => {
                   setShowCapacity(true);
-                  setCapacityMax("2");
+                  setCapacityMin("2");
                 }}
                 style={{ cursor: 'pointer', opacity: 0.5, fontSize: '13px' }}
               >
@@ -353,34 +367,72 @@ function CreateView({ urlParams }) {
               <div className="formControl"></div>
             </div>
           ) : (
-            <div className="formRow">
-              <div 
-                className="formLabel" 
-                onClick={() => setShowCapacity(false)}
-                style={{ cursor: 'pointer', fontSize: '13px' }}
-              >
-                - Capacité
-              </div>
-              <div className="formControl">
-                <select
-                  id="capacityMax"
-                  className="input"
-                  value={capacityMax}
-                  onChange={(e) => setCapacityMax(e.target.value)}
+            <>
+              <div className="formRow">
+                <div 
+                  className="formLabel" 
+                  onClick={() => setShowCapacity(false)}
+                  style={{ cursor: 'pointer', fontSize: '13px' }}
                 >
-                  <option value="2">2 personnes</option>
-                  <option value="3">3 personnes</option>
-                  <option value="4">4 personnes</option>
-                  <option value="5">5 personnes</option>
-                  <option value="6">6 personnes</option>
-                  <option value="7">7 personnes</option>
-                  <option value="8">8 personnes</option>
-                  <option value="9">9 personnes</option>
-                  <option value="10">10 personnes</option>
-                </select>
-                <div className="formHelper">Nombre maximum de participants, toi inclus</div>
+                  - Capacité
+                </div>
+                <div className="formControl">
+                  <p className="formHelper" style={{ marginBottom: '8px' }}>
+                    Définissez les limites du nombre de participants.
+                  </p>
+                </div>
               </div>
-            </div>
+              <div className="formRow">
+                <div className="formLabel"></div>
+                <div className="formControl" style={{ display: 'flex', gap: '12px' }}>
+                  <div style={{ flex: 1 }}>
+                    <label className="formLabel" htmlFor="capacityMin" style={{ display: 'block', marginBottom: '8px' }}>
+                      Minimum
+                    </label>
+                    <select
+                      id="capacityMin"
+                      className="input"
+                      value={capacityMin}
+                      onChange={(e) => setCapacityMin(e.target.value)}
+                      style={{ width: '100%' }}
+                    >
+                      <option value="2">2 personnes</option>
+                      <option value="3">3 personnes</option>
+                      <option value="4">4 personnes</option>
+                      <option value="5">5 personnes</option>
+                      <option value="6">6 personnes</option>
+                      <option value="7">7 personnes</option>
+                      <option value="8">8 personnes</option>
+                      <option value="9">9 personnes</option>
+                      <option value="10">10 personnes</option>
+                    </select>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label className="formLabel" htmlFor="capacityMax" style={{ display: 'block', marginBottom: '8px' }}>
+                      Maximum
+                    </label>
+                    <select
+                      id="capacityMax"
+                      className="input"
+                      value={capacityMax}
+                      onChange={(e) => setCapacityMax(e.target.value)}
+                      style={{ width: '100%' }}
+                    >
+                      <option value="">facultatif</option>
+                      <option value="2">2 personnes</option>
+                      <option value="3">3 personnes</option>
+                      <option value="4">4 personnes</option>
+                      <option value="5">5 personnes</option>
+                      <option value="6">6 personnes</option>
+                      <option value="7">7 personnes</option>
+                      <option value="8">8 personnes</option>
+                      <option value="9">9 personnes</option>
+                      <option value="10">10 personnes</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
         </div>
 
@@ -432,12 +484,48 @@ function InviteContainer({ inviteId, urlParams }) {
   } : null;
 
   const [error, setError] = useState(false);
+  
+  // Calculer le statut initial depuis l'URL (cohérent avec P0_01)
+  const computeInitialStatus = (invite) => {
+    if (!invite?.confirm_by) return "OPEN";
+    const confirmBy = parseLocalDate(invite.confirm_by);
+    if (!confirmBy) return "OPEN";
+    const now = new Date();
+    // Si confirm_by est dans le passé, l'invitation est CLOSED (P0_01)
+    if (now.getTime() >= confirmBy.getTime()) return "CLOSED";
+    return "OPEN";
+  };
+  
+  // Récupérer la réponse de l'utilisateur depuis localStorage pour affichage immédiat
+  const getStoredResponse = (inviteId) => {
+    try {
+      const stored = localStorage.getItem(`lsdts:response:${inviteId}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.choice && parsed.name) {
+          return { choice: parsed.choice, name: parsed.name };
+        }
+      }
+    } catch (e) {
+      // Ignorer les erreurs de parsing
+    }
+    return null;
+  };
+  
+  const storedResponse = getStoredResponse(inviteId);
+  
+  // Initialiser avec les données de l'URL pour affichage immédiat (cohérent avec 00_INDEX : "valeur perceptible immédiate")
   const [invitation, setInvitation] = useState(urlInvite ? { 
     invite: urlInvite,
-    status: "LOADING"
+    status: computeInitialStatus(urlInvite), // Calculé localement, sera mis à jour par le backend
+    participants: [], // Vide au début, sera rempli par les requêtes (cohérent avec P0_05)
+    counts: { yes: 0, no: 0, maybe: 0 }, // Par défaut 0, sera mis à jour
+    my: storedResponse, // Utiliser la réponse stockée pour affichage immédiat
   } : null);
   const [statusLoaded, setStatusLoaded] = useState(false);
   const [guestName, setGuestName] = useState(getUserName());
+  const [linkCopied, setLinkCopied] = useState(false);
+  const guestNameInputRef = useRef(null);
 
   // Props du USER (commun orga/guest)
   const anonDeviceId = getAnonDeviceId();
@@ -460,15 +548,28 @@ function InviteContainer({ inviteId, urlParams }) {
       return;
     }
 
-    // En mode orga, attendre que le POST soit terminé avant de faire le GET
-    // On fait un retry jusqu'à ce que l'organisateur soit compté dans les participants
+    let cancelled = false;
+
+    // Charger uniquement les participants/réponses (les infos de base sont déjà dans l'URL)
+    // Cohérent avec P0_05 : réduire les temps d'attente au maximum
     const loadResponses = async () => {
-      const maxRetries = 10;
+      // Délai minimal seulement si l'utilisateur n'a pas encore de réponse stockée (nouvelle invitation)
+      // Si l'utilisateur a déjà répondu, charger immédiatement
+      if (!storedResponse) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        if (cancelled) return;
+      }
+      
+      const maxRetries = 5;
       const retryDelay = 300; // 300ms entre chaque tentative
       
       for (let attempt = 0; attempt < maxRetries; attempt++) {
+        if (cancelled) return;
+        
         try {
           const responses = await getInviteResponses(inviteId, anonDeviceId, orga, urlInvite);
+          
+          if (cancelled) return;
           
           // En mode orga, vérifier que l'organisateur est compté (yes count >= 1)
           // car l'organisateur doit avoir une réponse "YES" créée par le POST
@@ -482,19 +583,47 @@ function InviteContainer({ inviteId, urlParams }) {
             }
           }
           
+          // Mettre à jour uniquement les participants et le statut (les infos de base viennent de l'URL)
           setInvitation((prev) => ({
             ...prev,
-            ...responses,
+            status: responses.status || prev?.status,
+            closure_cause: responses.closure_cause,
+          participants: responses.participants || prev?.participants || [],
+          counts: responses.counts || prev?.counts,
+          my: responses.my,
+          verdict: responses.verdict,
+          total_positions: responses.total_positions,
+          maybe_names: responses.maybe_names || prev?.maybe_names || [],
+          no_names: responses.no_names || prev?.no_names || [],
+            // Garder les infos de l'URL (titre, date, etc.)
             invite: {
               ...prev?.invite,
-              ...responses.invite,
               // capacity_max vient toujours de l'URL (paramètre m), jamais du backend
               capacity_max: prev?.invite?.capacity_max,
             },
           }));
+          
+          // Mettre à jour localStorage avec la réponse du backend (source de vérité)
+          if (responses.my) {
+            try {
+              localStorage.setItem(`lsdts:response:${inviteId}`, JSON.stringify(responses.my));
+            } catch (e) {
+              // Ignorer les erreurs de localStorage
+            }
+          } else {
+            // Si pas de réponse, supprimer du localStorage
+            try {
+              localStorage.removeItem(`lsdts:response:${inviteId}`);
+            } catch (e) {
+              // Ignorer les erreurs de localStorage
+            }
+          }
+          
           setStatusLoaded(true);
           return; // Succès, on sort de la boucle
         } catch (e) {
+          if (cancelled) return;
+          
           const isLastAttempt = attempt === maxRetries - 1;
           console.error(`[App] loadResponses échoué (tentative ${attempt + 1}/${maxRetries}):`, {
             inviteId,
@@ -527,6 +656,7 @@ function InviteContainer({ inviteId, urlParams }) {
 
     // Enregistrer la vue (non bloquant)
     recordView(inviteId, anonDeviceId).catch((err) => {
+      if (cancelled) return;
       console.error("[App] recordView échoué (non bloquant):", {
         inviteId,
         anonDeviceId: anonDeviceId ? "[présent]" : "[absent]",
@@ -539,12 +669,28 @@ function InviteContainer({ inviteId, urlParams }) {
         },
       });
     });
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [inviteId, anonDeviceId, orga]);
 
   const doRespond = async (choice) => {
     const n = normalizeName(guestName);
     if (!n) {
       return;
+    }
+    
+    // Vérifier si l'utilisateur a déjà répondu
+    // Permettre la modification si c'est un MAYBE vers YES/NO (P0_01)
+    const currentChoice = invitation?.my?.choice;
+    if (currentChoice) {
+      if (currentChoice === "MAYBE" && (choice === "YES" || choice === "NO")) {
+        // Permettre la modification MAYBE -> YES/NO
+      } else {
+        // L'utilisateur a déjà répondu et ne peut pas modifier (YES/NO définitifs)
+        return;
+      }
     }
     
     setStatusLoaded(false);
@@ -553,28 +699,94 @@ function InviteContainer({ inviteId, urlParams }) {
     try {
       await respond(inviteId, anonDeviceId, n, choice);
       
-      // Mise à jour locale optimiste
-      setInvitation((prev) => {
-        const newData = {
+      // Stocker la réponse dans localStorage pour affichage immédiat au refresh
+      try {
+        localStorage.setItem(`lsdts:response:${inviteId}`, JSON.stringify({ choice, name: n }));
+      } catch (e) {
+        // Ignorer les erreurs de localStorage
+      }
+      
+      // Recharger les données depuis le backend pour avoir les données à jour
+      // (participants, total_positions, etc.)
+      try {
+        const responses = await getInviteResponses(inviteId, anonDeviceId, orga, urlInvite);
+        setInvitation((prev) => ({
           ...prev,
-          my: { choice, name: n },
-        };
-        
-        if (choice === "YES" && prev.participants) {
-          newData.participants = [...prev.participants, n];
-        }
-        
-        if (prev.counts) {
-          newData.counts = { ...prev.counts };
-          if (choice === "YES") newData.counts.yes = (prev.counts.yes || 0) + 1;
-          if (choice === "NO") newData.counts.no = (prev.counts.no || 0) + 1;
-          if (choice === "MAYBE") newData.counts.maybe = (prev.counts.maybe || 0) + 1;
-        }
-        
-        return newData;
-      });
+          status: responses.status || prev?.status,
+          closure_cause: responses.closure_cause,
+          participants: responses.participants || prev?.participants || [],
+          counts: responses.counts || prev?.counts,
+          my: responses.my || { choice, name: n },
+          verdict: responses.verdict,
+          total_positions: responses.total_positions,
+          maybe_names: responses.maybe_names || prev?.maybe_names || [],
+          no_names: responses.no_names || prev?.no_names || [],
+          // Garder les infos de l'URL (titre, date, etc.)
+          invite: {
+            ...prev?.invite,
+            capacity_max: prev?.invite?.capacity_max,
+          },
+        }));
+      } catch (reloadError) {
+        console.error("[App] Rechargement après réponse échoué:", reloadError);
+        // Fallback: mise à jour optimiste si le rechargement échoue
+        setInvitation((prev) => {
+          const newData = {
+            ...prev,
+            my: { choice, name: n },
+          };
+          
+          if (choice === "YES") {
+            const currentParticipants = prev?.participants || [];
+            if (!currentParticipants.includes(n)) {
+              newData.participants = [...currentParticipants, n];
+            }
+          }
+          
+          if (prev.counts) {
+            newData.counts = { ...prev.counts };
+            if (choice === "YES") newData.counts.yes = (prev.counts.yes || 0) + 1;
+            if (choice === "NO") newData.counts.no = (prev.counts.no || 0) + 1;
+            if (choice === "MAYBE") newData.counts.maybe = (prev.counts.maybe || 0) + 1;
+          }
+          
+          // Mettre à jour total_positions
+          const currentTotal = prev?.total_positions || 0;
+          newData.total_positions = currentTotal + 1;
+          
+          return newData;
+        });
+      }
       setStatusLoaded(true);
     } catch (e) {
+      // Si l'erreur est "ALREADY_RESPONDED" (409), recharger les données au lieu d'afficher une erreur
+      if (e?.status === 409 && e?.details?.error === "ALREADY_RESPONDED") {
+        console.log("[App] Utilisateur a déjà répondu, rechargement des données");
+        try {
+          const responses = await getInviteResponses(inviteId, anonDeviceId, orga, urlInvite);
+          setInvitation((prev) => ({
+            ...prev,
+            status: responses.status || prev?.status,
+            closure_cause: responses.closure_cause,
+          participants: responses.participants || prev?.participants || [],
+          counts: responses.counts || prev?.counts,
+          my: responses.my,
+          verdict: responses.verdict,
+          total_positions: responses.total_positions,
+          maybe_names: responses.maybe_names || prev?.maybe_names || [],
+          no_names: responses.no_names || prev?.no_names || [],
+            invite: {
+              ...prev?.invite,
+              capacity_max: prev?.invite?.capacity_max,
+            },
+          }));
+          setStatusLoaded(true);
+          return;
+        } catch (reloadError) {
+          console.error("[App] Rechargement après ALREADY_RESPONDED échoué:", reloadError);
+        }
+      }
+      
       console.error("[App] doRespond échoué:", {
         inviteId,
         anonDeviceId: anonDeviceId ? "[présent]" : "[absent]",
@@ -593,6 +805,41 @@ function InviteContainer({ inviteId, urlParams }) {
     }
   };
 
+  // Calculer le countdown pour OPEN (hooks doivent être avant les retours conditionnels)
+  const invite = invitation?.invite;
+  const status = invitation?.status;
+  const [countdown, setCountdown] = useState("");
+  useEffect(() => {
+    if (status !== "OPEN" || !invite?.confirm_by) {
+      setCountdown("");
+      return;
+    }
+    
+    const updateCountdown = () => {
+      const confirmBy = parseLocalDate(invite.confirm_by);
+      if (!confirmBy) {
+        setCountdown("");
+        return;
+      }
+      
+      const now = new Date();
+      const deltaMs = confirmBy.getTime() - now.getTime();
+      
+      if (deltaMs <= 0) {
+        setCountdown("");
+        return;
+      }
+      
+      const hours = Math.floor(deltaMs / (60 * 60 * 1000));
+      const minutes = Math.floor((deltaMs % (60 * 60 * 1000)) / (60 * 1000));
+      setCountdown(`${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`);
+    };
+    
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [status, invite?.confirm_by]);
+
   if (error) {
     return (
       <PageShell>
@@ -605,7 +852,6 @@ function InviteContainer({ inviteId, urlParams }) {
     );
   }
 
-  const invite = invitation?.invite;
   if (!invite) return null;
   
   // Formatage simple inline - utiliser parseLocalDate pour éviter les problèmes UTC
@@ -668,11 +914,17 @@ function InviteContainer({ inviteId, urlParams }) {
   const capacityMax = (mValue && mValue !== "undefined" && mValue !== "null") ? parseCapacityMax(mValue) : null;
 
   // Vue unifiée orga/guest
-  const status = invitation.status;
-  const views = invitation.counts?.views;
-  const yes = invitation.counts?.yes;
-  const no = invitation.counts?.no;
-  const maybe = invitation.counts?.maybe;
+  const yes = invitation.counts?.yes || 0;
+  const no = invitation.counts?.no || 0;
+  const maybe = invitation.counts?.maybe || 0;
+  const views = invitation.counts?.views || 0;
+  // Note: noNames est disponible mais ne doit jamais être affichée dans une liste (règle de visibilité)
+  const noNames = invitation.no_names || [];
+  const maybeNames = invitation.maybe_names || [];
+  
+  // Calculer les non-répondants : vues uniques - somme de toutes les réponses
+  const totalResponses = yes + no + maybe;
+  const nonRespondants = Math.max(0, views - totalResponses);
 
   // Fonctions orga uniquement
   // Utiliser /i/{inviteId} pour que les Open Graph tags soient disponibles
@@ -705,7 +957,36 @@ function InviteContainer({ inviteId, urlParams }) {
         // Ignorer silencieusement
       }
     }
+    setLinkCopied(true);
+    setTimeout(() => {
+      setLinkCopied(false);
+    }, 2000);
   };
+
+  // Gestionnaire pour les CTA inactifs : focus le champ prénom
+  const handleCtaClick = (choice) => {
+    if (!statusLoaded || !normalizeName(guestName)) {
+      // Si le bouton est désactivé, focuser le champ prénom
+      if (guestNameInputRef.current) {
+        guestNameInputRef.current.focus();
+      }
+      return;
+    }
+    // Sinon, exécuter l'action normale
+    doRespond(choice);
+  };
+
+  // Déterminer le statut utilisateur
+  const userStatus = invitation?.my?.choice || (orga ? "YES" : "UNDECIDED");
+  const isUndecided = userStatus === "UNDECIDED";
+  const isYes = userStatus === "YES";
+  const isNo = userStatus === "NO";
+  const isMaybe = userStatus === "MAYBE";
+
+  // Calculer total_positions pour l'avancement
+  const totalPositions = invitation.total_positions != null 
+    ? invitation.total_positions 
+    : ((yes || 0) + (no || 0) + (maybe || 0));
 
   return (
     <PageShell>
@@ -714,131 +995,238 @@ function InviteContainer({ inviteId, urlParams }) {
         <h1 className="title">{invite.title}</h1>
         <p className="muted">{whenText}</p>
         <p className="muted">
-          {(() => {
-            // Logique simple : si confirm_by = when_at → immédiate
-            if (invite?.confirm_by && invite?.when_at) {
-              const c = parseLocalDate(invite.confirm_by);
-              const w = parseLocalDate(invite.when_at);
-              if (c && w && c.getTime() === w.getTime()) {
-                return "Confirmation immédiate";
-              }
-            }
-            // Sinon : afficher "Confirmation avant {heure} ({delta})"
-            return confirmText ? `Confirmation avant ${confirmText}` : "";
-          })()}
-        </p>
-        <p className="muted">
           {invite.capacity_max !== null ? `Capacité : ${invite.capacity_max} personnes` : ""}
         </p>
       </div>
 
-      {/* Section commune : Statut */}
-      <div className="section">
-        <div className={`statusBar ${
-          (status === "FULL" || status === "CLOSED") ? "statusAlert" : 
-          (status === "OPEN") ? "statusOpen" : ""
-        }`}>
-          {formatStatus(invitation.status)}
-        </div>
-        {/* Bouton Copier le lien - même condition que Participants */}
-        <button 
-          className="btn" 
-          type="button" 
-          onClick={handleCopyUrl}
-          style={{ display: (orga || invitation?.my?.choice === "YES") ? "block" : "none" }}
-        >
-          Copier le lien
-        </button>
-      </div>
+      {/* Layout OPEN : ordre strict */}
+      {status === "OPEN" && (
+        <>
+          {/* 1) Bloc Échéance (countdown) */}
+          {countdown && (
+            <div className="lsdts-block">
+              <div className="lsdts-meta">
+                <span>Clôture dans {countdown}</span>
+              </div>
+            </div>
+          )}
 
-        {/* Section centralisée : Actions */}
-        <div className="section" style={{ 
-          display: (
-            (!orga && !invitation?.my?.choice && status !== "FULL" && status !== "CLOSED") || 
-            (status === "FULL" || status === "CLOSED")
-          ) ? "block" : "none" 
-        }}>
-          <div className="ctaContainer">
-            {/* Formulaire guest - toujours présent, contenu conditionnel */}
-            <label 
-              className="subtitle" 
-              htmlFor="guestName"
-              style={{ display: (!orga && !invitation?.my?.choice && status !== "FULL" && status !== "CLOSED") ? "block" : "none" }}
-            >
-              Ton prénom
-            </label>
-            <input 
-              id="guestName" 
-              className="input inputInline" 
-              value={guestName}
-              onChange={(e) => setGuestName(e.target.value)}
-              placeholder="Ex : Alex"
-              disabled={!statusLoaded}
-              style={{ display: (!orga && !invitation?.my?.choice && status !== "FULL" && status !== "CLOSED") ? "block" : "none" }}
-            />
-            <div 
-              style={{ 
-                display: (!orga && !invitation?.my?.choice && status !== "FULL" && status !== "CLOSED") ? "flex" : "none",
-                flexDirection: "column",
-                gap: "8px",
-                width: "100%"
-              }}
-            >
-              <button 
-                className="btn btnPrimary" 
-                type="button" 
-                onClick={() => doRespond("YES")} 
-                disabled={!statusLoaded || !normalizeName(guestName)}
-              >
-                J'y vais
-              </button>
-              <button 
-                className="btn" 
-                type="button" 
-                onClick={() => doRespond("NO")} 
-                disabled={!statusLoaded || !normalizeName(guestName)}
-              >
-                Je ne peux pas
-              </button>
-              <button 
-                className="btn" 
-                type="button" 
-                onClick={() => doRespond("MAYBE")} 
-                disabled={!statusLoaded || !normalizeName(guestName)}
-              >
-                Je regarde
-              </button>
+          {/* 2) Bloc Avancement */}
+          <div className="lsdts-block">
+            <div className="lsdts-meta">
+              <span>{totalPositions === 1 ? "1 personne a déjà pris position" : `${totalPositions} personnes ont déjà pris position`}</span>
             </div>
           </div>
-          {/* Bouton Recréer - directement dans la section pour même largeur que "Copier le lien" */}
-          <button 
-            className="btn btnPrimary" 
-            type="button" 
-            onClick={recreate}
-            style={{ display: (status === "FULL" || status === "CLOSED") ? "block" : "none" }}
-          >
-            Recréer la proposition
-          </button>
-        </div>
 
-        {/* Section Participants centralisée - pleine largeur comme statusBar */}
-        <div className="section">
-          <ParticipantsList 
-            participants={invitation.participants || []} 
-            capacityMax={capacityMax}
-            yesCount={yes || invitation.participants?.length || 0}
-            show={orga || invitation?.my?.choice === "YES"}
-          />
-        </div>
+          {/* 3) Bloc principal (varie selon statut) */}
+          {isUndecided && (
+            <>
+              <div className="lsdts-block">
+                <label className="subtitle" htmlFor="guestName" style={{ marginBottom: "8px", display: "block" }}>
+                  Nom
+                </label>
+                <input 
+                  ref={guestNameInputRef}
+                  id="guestName" 
+                  className="input inputInline" 
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  placeholder="Ex : Alex"
+                  disabled={!statusLoaded}
+                />
+              </div>
+              <div className="lsdts-block">
+                <div className="lsdts-actions">
+                  <button 
+                    className="lsdts-btn lsdts-btn--yes" 
+                    type="button" 
+                    onClick={() => handleCtaClick("YES")} 
+                    disabled={!statusLoaded || !normalizeName(guestName)}
+                  >
+                    J'y vais
+                  </button>
+                  <button 
+                    className="lsdts-btn lsdts-btn--maybe" 
+                    type="button" 
+                    onClick={() => handleCtaClick("MAYBE")} 
+                    disabled={!statusLoaded || !normalizeName(guestName)}
+                  >
+                    À confirmer
+                  </button>
+                  <button 
+                    className="lsdts-btn lsdts-btn--no" 
+                    type="button" 
+                    onClick={() => handleCtaClick("NO")} 
+                    disabled={!statusLoaded || !normalizeName(guestName)}
+                  >
+                    Indisponible
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
 
-        {/* Section centralisée : Stats - orga uniquement */}
-        <div className="section" style={{ display: orga ? "block" : "none" }}>
-          <p className="subtitle">Vues : {views || 0} (unique)</p>
-          <p className="subtitle">
-            {capacityMax == null ? `Oui : ${yes || 0}` : ""}
-          </p>
-          <p className="subtitle">Non : {no || 0} / Je regarde : {maybe || 0}</p>
-        </div>
+          {isMaybe && (
+            <div className="lsdts-block">
+              <label className="subtitle" style={{ marginBottom: "12px", display: "block" }}>
+                Confirmer ma position
+              </label>
+              <div className="lsdts-actions">
+                <button 
+                  className="lsdts-btn lsdts-btn--yes" 
+                  type="button" 
+                  onClick={() => doRespond("YES")} 
+                  disabled={!statusLoaded}
+                >
+                  J'y vais
+                </button>
+                <button 
+                  className="lsdts-btn lsdts-btn--no" 
+                  type="button" 
+                  onClick={() => doRespond("NO")} 
+                  disabled={!statusLoaded}
+                >
+                  Indisponible
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Règles (visible si UNDECIDED ou MAYBE) */}
+          {isUndecided && (
+            <div className="lsdts-rules">
+              <ul style={{ margin: 0, paddingLeft: '20px', paddingRight: '20px', paddingTop: '8px', paddingBottom: '8px' }}>
+                <li>Réponse définitive. <strong>À confirmer</strong> peut être modifié (1x).</li>
+                <li>Participants visibles après réponse.</li>
+              </ul>
+            </div>
+          )}
+          {isMaybe && (
+            <div className="lsdts-rules">
+              <ul style={{ margin: 0, paddingLeft: '20px', paddingRight: '20px', paddingTop: '8px', paddingBottom: '8px' }}>
+                <li><strong>À confirmer</strong> est compté comme <strong>'Indisponible'</strong>.</li>
+                <li>Vous pouvez modifier votre position (1x).</li>
+              </ul>
+            </div>
+          )}
+
+          {/* Liste YES pour YES et NO (sans refresh, sauf orga) */}
+          {(isYes || isNo) && !orga && (
+            <div className="lsdts-block">
+              <ParticipantsList 
+                participants={invitation.participants || []} 
+                show={true}
+                label="Participants"
+              />
+            </div>
+          )}
+
+          {/* Listes pour organisateur */}
+          {orga && (
+            <>
+              <div className="lsdts-block">
+                <ParticipantsList 
+                  participants={invitation.participants || []} 
+                  show={true}
+                  label={`Participants (${yes})`}
+                />
+              </div>
+              {maybe > 0 && (
+                <div className="lsdts-block">
+                  <ParticipantsList 
+                    participants={maybeNames || []} 
+                    show={true}
+                    label={`À confirmer (${maybe})`}
+                  />
+                </div>
+              )}
+              {/* Stats pour organisateur */}
+              <div className="lsdts-block">
+                <div className="lsdts-meta">
+                  <span>Indisponibles: {no} - Vues unique: {views} - Non répondant: {nonRespondants}</span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Bouton Copier le lien */}
+          {(orga || isYes) && (
+            <div className="lsdts-block">
+              <button 
+                className="lsdts-btn" 
+                type="button" 
+                onClick={handleCopyUrl}
+              >
+                {linkCopied ? "Lien copié !" : "Copier le lien"}
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* État CLOSED */}
+      {status === "CLOSED" && (
+        <>
+          {invitation.verdict && (
+            <div className={`statusBar ${
+              invitation.verdict === "SUCCESS" ? "statusOpen" : "statusAlert"
+            }`}>
+              {invitation.verdict === "SUCCESS" ? (
+                <>
+                  <div><strong>Proposition confirmée</strong></div>
+                  <div>Rendez-vous à {(() => {
+                    if (!invite?.when_at) return "";
+                    const d = parseLocalDate(invite.when_at);
+                    if (!d) return "";
+                    return d.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+                  })()}</div>
+                </>
+              ) : (
+                <div><strong>Proposition non confirmée</strong></div>
+              )}
+            </div>
+          )}
+          
+          <div className="lsdts-block">
+            <ParticipantsList 
+              participants={invitation.participants || []} 
+              show={true}
+              label={orga ? `Participants (${yes || 0})` : "Participants"}
+            />
+          </div>
+
+          {/* Listes et stats pour organisateur en CLOSED */}
+          {orga && (
+            <>
+              {maybe > 0 && (
+                <div className="lsdts-block">
+                  <ParticipantsList 
+                    participants={maybeNames || []} 
+                    show={true}
+                    label={`À confirmer (${maybe})`}
+                  />
+                </div>
+              )}
+              {/* Stats pour organisateur */}
+              <div className="lsdts-block">
+                <div className="lsdts-meta">
+                  <span>Indisponibles: {no} - Vues unique: {views} - Non répondant: {nonRespondants}</span>
+                </div>
+              </div>
+            </>
+          )}
+
+          <div className="lsdts-block">
+            <button 
+              className="lsdts-btn" 
+              type="button" 
+              onClick={recreate}
+            >
+              Recréer la proposition
+            </button>
+          </div>
+        </>
+      )}
     </PageShell>
   );
 }
