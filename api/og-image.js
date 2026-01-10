@@ -67,7 +67,7 @@ export default async function handler(req, res) {
             justifyContent: "center",
             backgroundColor: "#fdfbf7",
             padding: "80px",
-            fontFamily: "system-ui, -apple-system, sans-serif",
+            fontFamily: "sans-serif",
           },
         },
         React.createElement(
