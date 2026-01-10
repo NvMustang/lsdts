@@ -37,8 +37,15 @@ export default async function handler(req, res) {
     const inviteFromDb = findInviteInRows(invitesRows, inviteId);
     
     // Construire invite depuis les paramètres de l'URL (pour affichage)
-    const confirmByFromUrl = typeof req.query.confirm_by === "string" && req.query.confirm_by ? req.query.confirm_by : null;
-    const capacityMax = req.query.capacity_max === "" || !req.query.capacity_max ? null : Number.parseInt(req.query.capacity_max, 10);
+    // Décoder l'URL si nécessaire (le serveur devrait le faire, mais on s'assure)
+    const confirmByRaw = req.query.confirm_by;
+    const confirmByFromUrl = (typeof confirmByRaw === "string" && confirmByRaw.trim()) 
+      ? decodeURIComponent(confirmByRaw.trim()) 
+      : null;
+    const capacityMaxRaw = req.query.capacity_max;
+    const capacityMax = (capacityMaxRaw === "" || !capacityMaxRaw || capacityMaxRaw === "undefined" || capacityMaxRaw === "null") 
+      ? null 
+      : Number.parseInt(String(capacityMaxRaw), 10);
     
     // Pour computeStatus : utiliser confirm_by depuis la base de données (UTC)
     // Pour l'affichage : utiliser confirm_by depuis l'URL (heure locale)
@@ -62,7 +69,7 @@ export default async function handler(req, res) {
     
     // Vérifier que confirm_by est défini (requis pour computeStatus)
     if (!inviteForStatus.confirm_by) {
-      throw new Error(`Missing confirm_by. Received from DB: ${inviteFromDb?.confirm_by}, from URL: ${confirmByFromUrl}`);
+      throw new Error(`Missing confirm_by. Received from DB: ${inviteFromDb?.confirm_by || "null"}, from URL: ${confirmByFromUrl || "null"}, query: ${JSON.stringify(req.query)}`);
     }
 
     // Charger uniquement TAB_RESPONSES pour calculer le statut
@@ -189,6 +196,9 @@ export default async function handler(req, res) {
         verdict = computeVerdict({ capacity_min: capacityMin }, conv.yes);
       }
     }
+    
+    // Initialiser views (calculé uniquement pour l'organisateur)
+    let views = null;
     if (isOrganizer) {
       // Calculer le nombre de vues uniques depuis TAB_VIEWS (backend uniquement)
       const viewsRows = await readAll(TAB_VIEWS, 10000);

@@ -136,7 +136,7 @@ export default async function handler(req, res) {
 
       // Accepter l'ID fourni par le frontend, ou en générer un nouveau
       let inviteId = typeof body.invite_id === "string" && body.invite_id.length === 32 ? body.invite_id : randomId();
-      const createdAt = formatDate(now);
+      const createdAt = nowIso();
 
   // Sauvegarder les dates telles quelles (format YYYY-MM-DDTHH:MM, pas de conversion)
   const inviteRow = [
