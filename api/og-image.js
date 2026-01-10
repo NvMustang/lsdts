@@ -54,7 +54,7 @@ export default async function handler(req, res) {
     }
 
     // Générer l'image OG : 1200x630px
-    return new ImageResponse(
+    const imageResponse = new ImageResponse(
       React.createElement(
         "div",
         {
@@ -114,6 +114,15 @@ export default async function handler(req, res) {
         height: 630,
       }
     );
+
+    // Convertir la Response Web API en réponse Node.js
+    const arrayBuffer = await imageResponse.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    res.statusCode = 200;
+    res.setHeader("content-type", "image/png");
+    res.setHeader("cache-control", "public, max-age=31536000, immutable");
+    res.end(buffer);
   } catch (e) {
     console.error("[og-image] Error:", e);
     return text(res, 500, "Image generation error");
