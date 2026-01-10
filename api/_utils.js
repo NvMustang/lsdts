@@ -42,7 +42,10 @@ export function randomId() {
 }
 
 export function rowsToObjects(rows) {
-  const header = rows?.[0] || [];
+  if (!Array.isArray(rows)) {
+    return { idx: {}, rows: [] };
+  }
+  const header = rows[0] || [];
   const idx = Object.fromEntries(header.map((h, i) => [h, i]));
   return { idx, rows: rows.slice(1) };
 }
@@ -94,6 +97,7 @@ export function findInviteInRows(rows, inviteId) {
     if (String(r[idx.id] || "") !== inviteId) continue;
     
     const cap = String(r[idx.capacity_max] || "").trim();
+    const capMin = String(r[idx.capacity_min] || "").trim();
     return {
       rowIndex: i + 2, // 1-based + header
       id: inviteId,
@@ -102,10 +106,12 @@ export function findInviteInRows(rows, inviteId) {
       when_has_time: String(r[idx.when_has_time] || "") === "1",
       confirm_by: String(r[idx.confirm_by] || ""),
       capacity_max: cap ? Number.parseInt(cap, 10) : null,
+      capacity_min: capMin ? Number.parseInt(capMin, 10) : 2,
       created_at: String(r[idx.created_at] || ""),
       status: String(r[idx.status] || "OPEN") || "OPEN",
       closed_at: String(r[idx.closed_at] || ""),
       closure_cause: String(r[idx.closure_cause] || ""),
+      verdict: String(r[idx.verdict] || ""),
       view_count_unique: Number.parseInt(String(r[idx.view_count_unique] || "0"), 10) || 0,
       yes_count: Number.parseInt(String(r[idx.yes_count] || "0"), 10) || 0,
       no_count: Number.parseInt(String(r[idx.no_count] || "0"), 10) || 0,

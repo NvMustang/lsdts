@@ -1,0 +1,52 @@
+# P0_06 — Visual Charter v0
+
+## Intention
+Événementiel minimal. Chaleureux sobre. Neutre. Aucun signal social.
+
+## Règles non négociables
+- Fond crème / blanc cassé
+- Texte principal bleu très foncé
+- Une seule couleur d'accent (bleu pétrole / navy)
+- Monochrome + 1 accent
+- Bordures: 2px pour section principale, 1px pour autres cadres
+- Arrondi léger
+- Pas d'icônes
+- Pas d'ombres
+- Tout tient sur un écran smartphone sans scroll
+
+## Typographie
+- Une seule police sans-serif (système ou police existante si présente)
+- Poids: Regular / Medium uniquement
+
+## Composants
+### Section principale (main_section)
+- Style: bordure 2px accent (navy), fond crème/clair teinté accent, padding stable
+- Titre: taille augmentée (fs-3 + 6px), font-weight 500
+- Mise en évidence visuelle pour attirer le regard
+
+### Blocs (règles, échéance, avancement, liste)
+- Style: bordure 1px, fond crème/clair, padding stable
+- Pas de card shadow
+
+### Boutons (CTA)
+- Par défaut: outline, bordure 1px
+- État hover: léger remplissage (subtil)
+- État disabled: opacité réduite
+- 3 boutons empilés, pleine largeur
+
+### Champs de formulaire
+- Bordure 1px
+- Pleine largeur disponible
+
+### Couleurs
+- Background: crème
+- Surface: crème plus claire
+- Text: bleu très foncé
+- Border: bleu foncé atténué / gris bleuté
+- Accent: navy (liens, focus)
+- YES/NO: différenciation uniquement après sélection (désaturée)
+- MAYBE: neutre (gris bleuté)
+
+## Accessibilité
+- Contraste texte/fond suffisant
+- Focus visible (outline accent)

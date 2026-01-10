@@ -159,8 +159,7 @@ export default function TimeSlotPicker({ value, onChange }) {
     startYRef.current = e.clientY;
     scrollStartRef.current = ref.current?.scrollTop || 0;
     if (ref.current) {
-      ref.current.style.cursor = 'grabbing';
-      ref.current.style.scrollSnapType = 'none';
+      ref.current.classList.add('time-picker-column-dragging');
     }
   };
 
@@ -173,8 +172,7 @@ export default function TimeSlotPicker({ value, onChange }) {
   const handleMouseUp = (ref) => {
     if (!ref.current) return;
     isDraggingRef.current = false;
-    ref.current.style.cursor = 'grab';
-    ref.current.style.scrollSnapType = 'y mandatory';
+    ref.current.classList.remove('time-picker-column-dragging');
   };
 
   const handleItemClick = (type, index) => {
@@ -217,126 +215,72 @@ export default function TimeSlotPicker({ value, onChange }) {
     }
   }, [dates, currentDateKey, hours, currentHour, currentRoundedMinute, availableMinutes]);
 
-  const pickerStyle = {
-    display: 'flex',
-    gap: '4px',
-    height: '160px',
-    position: 'relative',
-  };
-
-  const columnStyle = {
-    flex: 1,
-    height: '100%',
-    overflowY: 'scroll',
-    scrollSnapType: 'y mandatory',
-    borderRadius: '8px',
-    border: '1px solid #e6ddcf',
-    background: '#fffdfa',
-    position: 'relative',
-    scrollbarWidth: 'none',
-    msOverflowStyle: 'none',
-    cursor: 'grab',
-  };
-
-  const itemStyle = {
-    height: '40px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    scrollSnapAlign: 'center',
-    fontSize: '14px',
-    fontWeight: '700',
-    color: '#1f2933',
-    userSelect: 'none',
-    cursor: 'pointer',
-  };
-
-  const overlayStyle = {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    pointerEvents: 'none',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  };
-
-  const highlightStyle = {
-    width: '100%',
-    height: '40px',
-    border: '2px solid #1f7ae0',
-    borderRadius: '6px',
-    background: 'rgba(31, 122, 224, 0.08)',
-  };
-
   return (
-    <div style={pickerStyle}>
+    <div className="time-picker">
       {/* Dates */}
       <div 
         ref={dateRef}
-        style={columnStyle}
+        className="time-picker-column"
         onScroll={() => handleScroll('date', dateRef)}
         onMouseDown={(e) => handleMouseDown(e, dateRef)}
         onMouseMove={(e) => handleMouseMove(e, dateRef)}
         onMouseUp={() => handleMouseUp(dateRef)}
         onMouseLeave={() => handleMouseUp(dateRef)}
       >
-        <div style={{ height: '60px' }} />
+        <div className="time-picker-spacer" />
         {dates.map((d, i) => {
           const label = i === 0 
             ? `Aujourd'hui`
             : i === 1
             ? `Demain`
             : d.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' });
-          return <div key={i} style={itemStyle} onClick={() => handleItemClick('date', i)}>{label}</div>;
+          return <div key={i} className="time-picker-item" onClick={() => handleItemClick('date', i)}>{label}</div>;
         })}
-        <div style={{ height: '60px' }} />
+        <div className="time-picker-spacer" />
       </div>
 
       {/* Heures */}
       <div 
         ref={hourRef}
-        style={{ ...columnStyle, flex: '0 0 50px' }}
+        className="time-picker-column time-picker-column-narrow"
         onScroll={() => handleScroll('hour', hourRef)}
         onMouseDown={(e) => handleMouseDown(e, hourRef)}
         onMouseMove={(e) => handleMouseMove(e, hourRef)}
         onMouseUp={() => handleMouseUp(hourRef)}
         onMouseLeave={() => handleMouseUp(hourRef)}
       >
-        <div style={{ height: '60px' }} />
+        <div className="time-picker-spacer" />
         {hours.map((h, i) => (
-          <div key={i} style={itemStyle} onClick={() => handleItemClick('hour', i)}>{String(h).padStart(2, '0')}</div>
+          <div key={i} className="time-picker-item" onClick={() => handleItemClick('hour', i)}>{String(h).padStart(2, '0')}</div>
         ))}
-        <div style={{ height: '60px' }} />
+        <div className="time-picker-spacer" />
       </div>
 
       {/* Séparateur ":" */}
-      <div style={{ display: 'flex', alignItems: 'center', fontSize: '18px', fontWeight: '700', color: '#1f2933', userSelect: 'none' }}>:</div>
+      <div className="time-picker-separator">:</div>
 
       {/* Minutes */}
       <div 
         ref={minuteRef}
-        style={{ ...columnStyle, flex: '0 0 50px' }}
+        className="time-picker-column time-picker-column-narrow"
         onScroll={() => handleScroll('minute', minuteRef)}
         onMouseDown={(e) => handleMouseDown(e, minuteRef)}
         onMouseMove={(e) => handleMouseMove(e, minuteRef)}
         onMouseUp={() => handleMouseUp(minuteRef)}
         onMouseLeave={() => handleMouseUp(minuteRef)}
       >
-        <div style={{ height: '60px' }} />
+        <div className="time-picker-spacer" />
         {availableMinutes.map((minute, i) => (
-          <div key={i} style={itemStyle} onClick={() => handleItemClick('minute', i)}>
+          <div key={i} className="time-picker-item" onClick={() => handleItemClick('minute', i)}>
             {String(minute).padStart(2, '0')}
           </div>
         ))}
-        <div style={{ height: '60px' }} />
+        <div className="time-picker-spacer" />
       </div>
 
       {/* Overlay highlight */}
-      <div style={overlayStyle}>
-        <div style={highlightStyle} />
+      <div className="time-picker-overlay">
+        <div className="time-picker-highlight" />
       </div>
     </div>
   );

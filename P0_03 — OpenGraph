@@ -1,0 +1,96 @@
+# P0_03 — OpenGraph (OG unifié via image générée)
+
+## Objectif
+Garantir un rendu **cohérent et lisible** de LSDTS sur toutes les messageries
+(WhatsApp, Messenger, Telegram), y compris lorsque le texte OG est tronqué ou peu visible,
+en faisant de **l’image OG la source de vérité visuelle**.
+
+## Périmètre
+- Contenu OpenGraph (title, image)
+- Génération dynamique de l’image OG
+- Contraintes de format et de contenu
+
+## Hors périmètre
+- Logique métier (OPEN / CLOSED)
+- Visibilité des participants
+- Wording interne hors OG
+- Animations / templates multiples
+
+## Principe directeur
+L’OpenGraph doit :
+- orienter
+- créer l’imminence
+- légitimer le clic
+
+L’image OG est la **surface principale**.
+Le texte OG est un **fallback**.
+
+## Contenu OpenGraph (verrouillé)
+
+### OG Title
+- **Titre de la proposition**
+- Court, factuel
+- Identique au titre affiché dans l’outil
+
+### OG Image (obligatoire)
+Image générée dynamiquement contenant **exclusivement** :
+- Titre de la proposition
+- “Décision avant HH:MM”
+- “Répondre ici 👈”
+
+Aucun autre élément n’est autorisé.
+
+### OG Description
+- Optionnelle
+- Peut reprendre :
+  - “Décision avant HH:MM”
+  - “Répondre ici 👈”
+- Ne doit jamais contenir d’information supplémentaire.
+
+## Interdits explicites (texte ET image)
+- lieu
+- date complète
+- nombre de participants
+- liste ou aperçu de participants
+- statut (“ça se fait”, “presque”, etc.)
+- nom / avatar de l’organisateur
+- contexte émotionnel ou qualificatif
+- emoji hors 👈
+
+## Contraintes techniques (image OG)
+- Format : **1200 × 630 px**
+- Ratio 1.91:1
+- Image accessible publiquement via HTTPS
+- Pas d’animation
+- Texte lisible sur mobile
+- Génération déterministe (même input = même image)
+
+## États
+- OPEN :
+  - OG actif tel que défini ci-dessus
+- CLOSED :
+  - OG inchangé
+  - Aucun OG “résultat”
+
+## Règles comportementales
+- L’OG image doit :
+  - rendre le clic justifié sans expliquer
+  - fonctionner même si le texte est masqué
+- Elle ne doit jamais :
+  - rassurer socialement
+  - permettre d’anticiper le verdict
+  - déplacer la décision hors LSDTS
+
+## Critères d’acceptation
+- Le rendu est compréhensible **sans texte OG**.
+- Le message clé est lisible sur :
+  - WhatsApp
+  - Messenger
+  - Telegram
+- Aucun élément interdit n’apparaît sur l’image.
+- L’heure affichée correspond exactement à `expiresAt`.
+
+## Notes d’implémentation
+- Une seule image par invitation.
+- Cache maîtrisé (possibilité de forcer le refresh côté tests).
+- La logique de génération est centralisée.

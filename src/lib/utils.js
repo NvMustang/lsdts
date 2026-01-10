@@ -48,7 +48,6 @@ export function buildShareUrl(inviteId) {
 
 export function formatStatus(status) {
   if (status === "LOADING") return "Chargement...";
-  if (status === "FULL") return "Complet";
   if (status === "CLOSED") return "Clôturé";
   if (status === "OPEN") return "Ouvert";
   return status;

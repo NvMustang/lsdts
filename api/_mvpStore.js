@@ -27,10 +27,12 @@ export const HEADERS = {
     "when_has_time",
     "confirm_by",
     "capacity_max",
+    "capacity_min",
     "created_at",
     "status",
     "closed_at",
     "closure_cause",
+    "verdict",
     "view_count_unique",
     "yes_count",
     "no_count",
@@ -168,7 +170,8 @@ export async function appendInvite(inviteRow) {
   const sid = spreadsheetId();
   const accessToken = await getAccessToken(SCOPE_RW);
   await ensureMvpTabs();
-  await sheetsAppendRow(sid, `${toA1SheetName(TAB_INVITES)}!A1:Q1`, inviteRow, accessToken);
+  const lastCol = colLetter(HEADERS[TAB_INVITES].length);
+  await sheetsAppendRow(sid, `${toA1SheetName(TAB_INVITES)}!A1:${lastCol}1`, inviteRow, accessToken);
 }
 
 export async function appendView(viewRow) {
@@ -198,10 +201,11 @@ export async function updateInviteRowById(inviteId, mutate) {
   const accessToken = await getAccessToken(SCOPE_RW);
   await ensureMvpTabs();
 
-  const rows = await sheetsGetValues(sid, `${toA1SheetName(TAB_INVITES)}!A1:Q5000`, accessToken);
+  const wantedLen = HEADERS[TAB_INVITES].length;
+  const lastCol = colLetter(wantedLen);
+  const rows = await sheetsGetValues(sid, `${toA1SheetName(TAB_INVITES)}!A1:${lastCol}5000`, accessToken);
   const header = rows?.[0] || [];
   const idx = Object.fromEntries(header.map((h, i) => [h, i]));
-  const wantedLen = HEADERS[TAB_INVITES].length;
 
   for (let i = 1; i < rows.length; i += 1) {
     const r = rows[i];
@@ -212,7 +216,36 @@ export async function updateInviteRowById(inviteId, mutate) {
     const current = Array.from({ length: wantedLen }, (_, j) => String(r[j] ?? ""));
     const next = mutate(current, idx) || current;
 
-    const range = `${toA1SheetName(TAB_INVITES)}!A${rowIndex}:Q${rowIndex}`;
+    const range = `${toA1SheetName(TAB_INVITES)}!A${rowIndex}:${lastCol}${rowIndex}`;
+    await sheetsUpdateValues(sid, range, [next], accessToken);
+    return { ok: true, rowIndex };
+  }
+
+  return { ok: false, error: "not_found" };
+}
+
+export async function updateResponseByUser(inviteId, anonDeviceId, mutate) {
+  const sid = spreadsheetId();
+  const accessToken = await getAccessToken(SCOPE_RW);
+  await ensureMvpTabs();
+
+  const wantedLen = HEADERS[TAB_RESPONSES].length;
+  const lastCol = colLetter(wantedLen);
+  const rows = await sheetsGetValues(sid, `${toA1SheetName(TAB_RESPONSES)}!A1:${lastCol}10000`, accessToken);
+  const header = rows?.[0] || [];
+  const idx = Object.fromEntries(header.map((h, i) => [h, i]));
+
+  for (let i = 1; i < rows.length; i += 1) {
+    const r = rows[i];
+    if (!r) continue;
+    if (String(r[idx.invite_id] || "") !== inviteId) continue;
+    if (String(r[idx.anon_device_id] || "") !== anonDeviceId) continue;
+
+    const rowIndex = i + 1; // 1-based
+    const current = Array.from({ length: wantedLen }, (_, j) => String(r[j] ?? ""));
+    const next = mutate(current, idx) || current;
+
+    const range = `${toA1SheetName(TAB_RESPONSES)}!A${rowIndex}:${lastCol}${rowIndex}`;
     await sheetsUpdateValues(sid, range, [next], accessToken);
     return { ok: true, rowIndex };
   }

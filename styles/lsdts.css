@@ -1,0 +1,403 @@
+:root {
+    /* Colors */
+    --bg: #fbf7f0;          /* crème */
+    --surface: #fffaf2;     /* crème plus claire */
+    --text: #0f1b2d;        /* bleu très foncé */
+    --muted: #3a4a63;       /* bleu/gris */
+    --border: #22324a;      /* navy atténué */
+    --accent: #132b4d;      /* bleu pétrole/navy */
+  
+    /* Status (désaturés) */
+    --yes: #2b5a46;
+    --no:  #6a2a2a;
+    --maybe: #4a5568;
+  
+    /* Layout */
+    --radius: 14px;
+    --border-w: 2px;
+    --space-1: 8px;
+    --space-2: 12px;
+    --space-3: 16px;
+    --space-4: 20px;
+  
+    /* Type */
+    --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    --fs-1: 14px;
+    --fs-2: 16px;
+    --fs-3: 20px;
+    --lh: 1.35;
+  
+    /* Buttons */
+    --btn-h: 48px;
+  }
+  
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    line-height: var(--lh);
+  }
+  
+  .lsdts {
+    max-width: 520px;
+    margin: 0 auto;
+    padding: var(--space-3);
+  }
+  
+  .lsdts-block {
+    background: var(--surface);
+    border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+    border-radius: var(--radius);
+    padding: var(--space-3);
+    margin-bottom: var(--space-2);
+  }
+  
+  .lsdts-rules {
+    font-size: var(--fs-1);
+    color: var(--muted);
+    display: grid;
+    gap: 6px;
+  }
+  
+  .lsdts-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-2);
+    font-size: var(--fs-1);
+    color: var(--muted);
+  }
+  
+  .lsdts-title {
+    font-size: var(--fs-3);
+    font-weight: 500;
+    margin: 0 0 var(--space-2) 0;
+  }
+  
+  .lsdts-actions {
+    display: grid;
+    gap: var(--space-2);
+  }
+  
+  .lsdts-btn {
+    height: var(--btn-h);
+    width: 100%;
+    border-radius: var(--radius);
+    border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+    background: transparent;
+    color: var(--text);
+    font-size: var(--fs-2);
+    font-weight: 500;
+    cursor: pointer;
+  }
+  
+  .lsdts-btn:hover {
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
+  }
+  
+  .lsdts-btn:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    outline-offset: 2px;
+  }
+  
+  .lsdts-btn[disabled] {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  
+  .lsdts-btn--yes:hover { background: color-mix(in srgb, var(--yes) 8%, transparent); }
+  .lsdts-btn--no:hover  { background: color-mix(in srgb, var(--no) 8%, transparent); }
+  .lsdts-btn--maybe {
+    border-color: color-mix(in srgb, var(--maybe) 70%, transparent);
+    color: color-mix(in srgb, var(--text) 85%, transparent);
+  }
+  
+  .lsdts-list {
+    display: grid;
+    gap: 10px;
+    font-size: var(--fs-2);
+  }
+  
+  .lsdts-list-item {
+    padding: 10px 12px;
+    border-radius: calc(var(--radius) - 6px);
+    border: 1px solid color-mix(in srgb, var(--border) 35%, transparent);
+    background: color-mix(in srgb, var(--surface) 80%, white);
+  }
+  
+  /* Classes pour App.jsx */
+  .appShell {
+    min-height: 100vh;
+    background: var(--bg);
+    padding: var(--space-3);
+  }
+  
+  .card {
+    max-width: 520px;
+    margin: 0 auto;
+  }
+  
+  .section {
+    background: color-mix(in srgb, var(--surface) 92%, var(--accent));
+    border: var(--border-w) solid var(--accent);
+    border-radius: var(--radius);
+    padding: var(--space-3);
+    margin-bottom: var(--space-4);
+  }
+  
+  .title {
+    font-size: calc(var(--fs-3) + 6px);
+    font-weight: 500;
+    color: var(--text);
+    margin: 0 0 var(--space-3) 0;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+  }
+  
+  .section .muted {
+    font-size: var(--fs-2);
+    margin-bottom: var(--space-2);
+  }
+  
+  .subtitle {
+    font-size: var(--fs-2);
+    font-weight: 500;
+    color: var(--text);
+    margin: 0 0 var(--space-2) 0;
+  }
+  
+  .muted {
+    font-size: var(--fs-1);
+    color: var(--muted);
+    margin: 0 0 var(--space-1) 0;
+  }
+  
+  .formGrid {
+    display: grid;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+    width: 100%;
+  }
+  
+  .formRow {
+    display: grid;
+    gap: var(--space-1);
+    width: 100%;
+  }
+  
+  .formLabel {
+    font-size: var(--fs-1);
+    font-weight: 400;
+    color: var(--text);
+    width: 100%;
+  }
+  
+  .formControl {
+    display: grid;
+    gap: 4px;
+    width: 100%;
+  }
+  
+  .input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: var(--space-2);
+    border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    font-size: var(--fs-2);
+    font-weight: 400;
+    font-family: var(--font);
+  }
+  
+  select.input {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .input:focus {
+    outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    outline-offset: 2px;
+  }
+  
+  .inputInline {
+    margin-bottom: 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .lsdts-block input,
+  .lsdts-block select {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .formHelper {
+    font-size: var(--fs-1);
+    color: var(--muted);
+  }
+  
+  .btn {
+    height: var(--btn-h);
+    width: 100%;
+    border-radius: var(--radius);
+    border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+    background: transparent;
+    color: var(--text);
+    font-size: var(--fs-2);
+    font-weight: 500;
+    font-family: var(--font);
+    cursor: pointer;
+    padding: 0;
+  }
+  
+  .btn:hover {
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
+  }
+  
+  .btn:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    outline-offset: 2px;
+  }
+  
+  .btn[disabled] {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  
+  .error {
+    color: var(--text);
+    font-size: var(--fs-2);
+    margin-bottom: var(--space-2);
+  }
+  
+  .statusBar {
+    padding: var(--space-3);
+    border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+    border-radius: var(--radius);
+    background: var(--surface);
+    margin-bottom: var(--space-3);
+    font-size: var(--fs-2);
+    color: var(--text);
+  }
+  
+  .proposal {
+    margin-bottom: var(--space-2);
+  }
+  
+  .proposalText {
+    font-size: var(--fs-2);
+    color: var(--text);
+    white-space: pre-line;
+    margin: 0;
+  }
+  
+  .youHighlight {
+    font-weight: 500;
+  }
+  
+  .modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: color-mix(in srgb, var(--bg) 95%, black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: var(--space-3);
+  }
+  
+  .modalContent {
+    background: var(--surface);
+    border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+    border-radius: var(--radius);
+    padding: var(--space-3);
+    max-width: 520px;
+    width: 100%;
+  }
+  
+  /* TimeSlotPicker */
+  .time-picker {
+    display: flex;
+    gap: 4px;
+    height: 160px;
+    position: relative;
+  }
+  
+  .time-picker-column {
+    flex: 1;
+    height: 100%;
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+    border-radius: var(--radius);
+    border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+    background: var(--surface);
+    position: relative;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    cursor: grab;
+  }
+  
+  .time-picker-column::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .time-picker-column-dragging {
+    cursor: grabbing !important;
+    scroll-snap-type: none;
+  }
+  
+  .time-picker-column-narrow {
+    flex: 0 0 50px;
+  }
+  
+  .time-picker-item {
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    scroll-snap-align: center;
+    font-size: var(--fs-1);
+    font-weight: 500;
+    color: var(--text);
+    user-select: none;
+    cursor: pointer;
+  }
+  
+  .time-picker-spacer {
+    height: 60px;
+  }
+  
+  .time-picker-separator {
+    display: flex;
+    align-items: center;
+    font-size: var(--fs-2);
+    font-weight: 500;
+    color: var(--text);
+    user-select: none;
+  }
+  
+  .time-picker-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .time-picker-highlight {
+    width: 100%;
+    height: 40px;
+    border: 1px solid var(--accent);
+    border-radius: calc(var(--radius) - 6px);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+  

@@ -1,0 +1,89 @@
+# P0_02 — Privacy / Visibility (Opacité conditionnelle + liste YES)
+
+## Objectif
+Réduire l’attentisme avant l’action et **récompenser l’action** après réponse, sans exposer les absents ni créer de pression sociale excessive.
+
+## Périmètre
+- Ce qui est visible sur une invitation selon :
+  - état OPEN / CLOSED
+  - statut utilisateur : non-répondant vs répondant
+- Visibilité des participants
+- Suppression/masquage des métriques sociales (vues, breakdown complet)
+
+## Hors périmètre
+- Wording / textes exacts (géré par P0_04 Copy)
+- Layout / structure UI (P0_05)
+- OpenGraph (P0_03)
+- Stats long terme / historiques
+- Intégrations
+
+## Règles de visibilité (source de vérité)
+### 1) OPEN — utilisateur non-répondant
+Afficher uniquement :
+- Titre de la proposition
+- Deadline (heure de clôture)
+- "X positions prises" (X = total réponses, toutes positions confondues)
+
+Ne jamais afficher :
+- Liste de participants (aucune)
+- Liste des YES/NO/MAYBE
+- Détail des compteurs par position
+- Vues uniques / impressions / "vu par"
+- Non-répondants
+
+### 2) OPEN — utilisateur répondant (après prise de position)
+Débloquer immédiatement :
+- Liste des participants **YES uniquement** (noms/pseudos)
+
+Toujours ne pas afficher :
+- NO / MAYBE (ni liste ni compteurs)
+- Non-répondants
+- Vues uniques / impressions
+- Breakdown complet
+
+### 3) CLOSED — tous utilisateurs
+Afficher :
+- Verdict final (SUCCESS/FAILURE via P0_01)
+- Liste des participants **YES uniquement** (neutre, factuelle)
+
+Ne jamais afficher :
+- NO / MAYBE
+- Non-répondants
+- Vues uniques / impressions
+- Historique de changements (il n’y en a pas)
+
+### 4) Organisateur — tous états (OPEN/CLOSED)
+Affichage réservé à l'organisateur uniquement (visible en OPEN et CLOSED) :
+- Liste des participants YES avec count : "Participants (X)"
+- Liste "À confirmer (X)" : affiche les noms uniquement si count > 0 (ne s'affiche pas si count = 0)
+- Bloc stats (une seule ligne) : "Indisponibles: X - Vues unique: Y - Non répondant: Z"
+  - Indisponibles : count NO uniquement (pas de liste de noms)
+  - Vues unique : nombre de vues dédupliquées (calculé depuis TAB_VIEWS backend uniquement)
+  - Non répondant : différence entre vues uniques et somme de toutes les réponses (YES + NO + MAYBE)
+- Ces métriques ne sont jamais visibles pour les invités
+
+## Identification “répondant vs non-répondant”
+- Un utilisateur est “répondant” s’il a une réponse enregistrée pour cette invitation.
+- Sinon, “non-répondant”.
+
+## Conséquences UX attendues (non-négociables)
+- Avant réponse : impossible de “se rassurer socialement”.
+- Après réponse : l’utilisateur obtient une information sociale immédiate (liste YES), justifiant l’acte.
+- Aucun signal ne doit permettre d’inférer “qui n’a pas répondu”.
+
+## Edge cases
+- Si 0 YES : liste YES vide (afficher un état vide neutre, sans jugement).
+- Si réponse = NO ou MAYBE : l’utilisateur voit quand même la liste YES (récompense informationnelle reste valable).
+- Si invitation CLOSED : mêmes règles pour tous.
+
+## Critères d'acceptation
+- OPEN/non-répondant : seule métrique sociale visible = "X positions prises".
+- OPEN/répondant : accès immédiat à la liste YES.
+- CLOSED/tous : verdict + liste YES.
+- Aucune page n'affiche vues uniques ou breakdown complet **pour les invités**.
+- Stats organisateur : breakdown complet + vues uniques + non-répondants (calculés depuis TAB_VIEWS backend uniquement).
+- Impossible de déduire les absents (pour les invités).
+
+## Notes d’implémentation
+- Les restrictions doivent être appliquées côté backend (pas uniquement UI).
+- Les endpoints doivent retourner des payloads différents selon le statut (répondant vs non-répondant), ou filtrer côté serveur.

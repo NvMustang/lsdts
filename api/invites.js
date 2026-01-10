@@ -1,7 +1,7 @@
 import { json } from "./_sheets.js";
 import { appendInvite, appendLog, appendResponse, ensureMvpTabs, readAll, updateInviteRowById } from "./_mvpStore.js";
 import { badRequest, serverError, randomId, offsetToMs, parseBody, normalizeName, nowIso } from "./_utils.js";
-import { computeStatus } from "./_inviteUtils.js";
+import { computeStatus, computeVerdict } from "./_inviteUtils.js";
 
 function clampInt(n, min, max) {
   const x = Number.parseInt(String(n), 10);
@@ -124,6 +124,14 @@ export default async function handler(req, res) {
         if (capacityMax === null) return badRequest(res, "Invalid capacity");
       }
 
+      // capacityMin : valeur par défaut 2, minimum 2
+      let capacityMin = 2;
+      if (body.capacity_min !== null && body.capacity_min !== undefined && String(body.capacity_min).trim() !== "") {
+        const parsed = clampInt(body.capacity_min, 2, 100);
+        if (parsed === null) return badRequest(res, "Invalid capacity_min");
+        capacityMin = parsed;
+      }
+
       // Accepter l'ID fourni par le frontend, ou en générer un nouveau
       let inviteId = typeof body.invite_id === "string" && body.invite_id.length === 32 ? body.invite_id : randomId();
       const createdAt = formatDate(now);
@@ -136,8 +144,10 @@ export default async function handler(req, res) {
     whenParsed.hasTime ? "1" : "0",
     confirmByLocal, // Format YYYY-MM-DDTHH:MM
     capacityMax === null ? "" : String(capacityMax),
+    String(capacityMin),
     createdAt,
     "OPEN",
+    "",
     "",
     "",
     "0",
@@ -166,22 +176,21 @@ export default async function handler(req, res) {
     const inviteForStatus = {
       confirm_by: confirmByLocal, // Format YYYY-MM-DDTHH:MM, même que when_at
       capacity_max: capacityMax,
+      capacity_min: capacityMin,
     };
     const statusResult = computeStatus(inviteForStatus, yesCount, now);
     
     await updateInviteRowById(inviteId, (row, idx) => {
       row[idx.yes_count] = String(yesCount);
       row[idx.first_response_at] = responseCreatedAt;
-      // Mettre à jour le statut si nécessaire (FULL ou CLOSED)
-      if (statusResult.status === "FULL") {
-        row[idx.status] = "FULL";
-        row[idx.closed_at] = responseCreatedAt;
-        row[idx.closure_cause] = "FULL";
-      } else if (statusResult.status === "CLOSED") {
-        // Cas où confirm_by est dans le passé (confirmation immédiate avec événement dans le passé)
+      // Mettre à jour le statut si nécessaire (CLOSED)
+      if (statusResult.status === "CLOSED") {
         row[idx.status] = "CLOSED";
         row[idx.closed_at] = responseCreatedAt;
-        row[idx.closure_cause] = "EXPIRED";
+        row[idx.closure_cause] = statusResult.closureCause || "EXPIRED";
+        // Calculer le verdict uniquement à la clôture
+        const verdict = computeVerdict(inviteForStatus, yesCount);
+        row[idx.verdict] = verdict;
       }
       return row;
     });

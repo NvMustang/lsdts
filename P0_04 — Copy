@@ -1,0 +1,150 @@
+# P0_04 — Copy (source de vérité pour wording)
+
+## Objectif
+Définir tous les **textes exacts** affichés dans LSDTS. Cadrer le ton et la posture décisionnelle.
+
+## Périmètre
+- Tous les textes exacts (wording)
+- Principes de copy (ton, style)
+- Labels, messages, verdicts
+- Interdits explicites
+
+## Hors périmètre
+- Layout / structure UI (P0_05)
+- Design visuel (P0_06)
+- OpenGraph (P0_03)
+- Logique métier (P0_01)
+- Visibilité des participants (P0_02)
+
+## Principes de copy (verrouillés)
+- Ton factuel, normatif
+- Pas de justification
+- Pas d'empathie explicite
+- Pas de promesse
+- Pas de discussion implicite
+
+La copy **énonce des règles et des états**, elle ne cherche pas à convaincre.
+
+---
+
+## Bloc Règles (visible uniquement si UNDECIDED)
+- "Réponse définitive. **À confirmer** peut être modifié (1x)."
+- "Participants visibles après réponse."
+
+---
+
+## État OPEN / MAYBE ("À confirmer")
+- Label au-dessus des CTA : "Confirmer ma position"
+- CTA 1 : "J'y vais"
+- CTA 2 : "Indisponible"
+- Bloc Règles (format liste à puces, sous les CTA) :
+  - "**À confirmer** est compté comme **'Indisponible'**."
+  - "Vous pouvez modifier votre position (1x)."
+
+---
+
+## État OPEN / UNDECIDED
+- Bloc "Nom" : champ input dans un bloc séparé (bloc distinct du bloc CTA)
+- Label champ nom : **"Nom"**
+- Placeholder : "Ex : Alex"
+- Bloc CTA : 3 CTA empilés verticalement dans l'ordre :
+  1) "J'y vais"
+  2) "À confirmer"
+  3) "Indisponible"
+- Bloc Règles : affiché sous le bloc CTA
+
+## Formulaire création — Capacité
+- Texte explicatif : **"Définissez les limites du nombre de participants."**
+- Label champ min : **"Minimum"**
+- Label champ max : **"Maximum"**
+- Placeholder champ max : **"facultatif"**
+
+## Labels des actions (réponses)
+- YES : **"J'y vais"**
+- NO : **"Indisponible"**
+- MAYBE : **"À confirmer"**
+
+Aucune variante autorisée.
+
+---
+
+
+## Avancement (OPEN, tous statuts)
+- Texte unique : "1 personne a déjà pris position" (si X = 1) / "X personnes ont déjà pris position" (si X > 1)
+- Aucun détail YES/NO/MAYBE
+
+---
+
+## Échéance (OPEN, tous statuts)
+- Format factuel (ex: "Clôture dans 01:42")
+
+---
+
+## Liste des participants (visible après réponse ou CLOSED)
+- Label au-dessus de la liste : **"Participants"** (invités) / **"Participants (X)"** (organisateur, X = nombre de YES)
+- Affiche uniquement les noms des participants YES
+
+---
+
+## Stats organisateur (visible uniquement pour l'organisateur, OPEN et CLOSED)
+- Liste "Participants (X)" : affiche les noms des participants YES
+- Liste "À confirmer (X)" : affiche les noms uniquement si X > 0 (ne s'affiche pas si count = 0)
+- Bloc stats (une seule ligne, séparées par " - ") : "Indisponibles: X - Vues unique: Y - Non répondant: Z"
+  - Indisponibles : count NO uniquement (pas de liste de noms)
+  - Vues unique : nombre de vues dédupliquées
+  - Non répondant : différence entre vues uniques et somme de toutes les réponses (YES + NO + MAYBE)
+
+---
+
+## Bouton "Copier le lien"
+- Label : **"Copier le lien"** (état initial) / **"Lien copié !"** (après clic, pendant 2 secondes)
+- Copie l'URL de partage dans le presse-papiers
+
+## Bouton "Recréer la proposition" (CLOSED)
+- Label : **"Recréer la proposition"**
+- Redirige vers la page de création avec titre et date pré-remplis
+
+---
+
+## État CLOSED — Verdict (verrouillé, identique pour tous)
+
+### SUCCESS
+- **"Proposition confirmée"**
+- **"Rendez-vous à [heure de début]"**
+
+### FAILURE
+- **"Proposition non confirmée"**
+
+Aucune explication.
+Aucun commentaire.
+Pas de discussion.
+
+---
+
+## Interdits explicites
+- "Décidons ensemble"
+- "Merci de votre compréhension"
+- "Presque"
+- "Il manque X personnes"
+- "rejoignez-les"
+- "il reste X places"
+- Toute formulation ouvrant une discussion
+- Toute incitation sociale
+
+---
+
+## Critères d'acceptation
+- L'utilisateur comprend :
+  - qu'il prend une position
+  - qu'elle est irréversible (sauf MAYBE, modifiable 1x)
+- La décision finale est claire et actionnable
+- Aucun texte ne déplace la décision hors de LSDTS
+- Aucun texte n'encourage l'attentisme
+
+---
+
+## Notes d'implémentation
+- Centraliser toutes les chaînes de caractères
+- Toute modification de wording doit passer par cette spec
+- P0_04 est la source de vérité pour tous les textes
+

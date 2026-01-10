@@ -6,6 +6,7 @@ import inviteHandler from "../api/invite.js";
 import inviteResponsesHandler from "../api/invite-responses.js";
 import invitesHandler from "../api/invites.js";
 import invitePageHandler from "../api/invite-page.js";
+import ogImageHandler from "../api/og-image.js";
 
 const PORT = Number.parseInt(process.env.LSDTS_BACKEND_PORT || "8787", 10);
 
@@ -57,6 +58,7 @@ async function route(req, res) {
   if (apiPath === "invite-responses") return await inviteResponsesHandler(req, res);
   if (apiPath === "invites") return await invitesHandler(req, res);
   if (apiPath === "invite-page") return await invitePageHandler(req, res);
+  if (apiPath === "og-image") return await ogImageHandler(req, res);
 
   return notFound(res);
 }
@@ -87,9 +89,10 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, "127.0.0.1", () => {
+server.listen(PORT, "0.0.0.0", () => {
   // No console noise in MVP; one line is acceptable for local dev.
-  console.log(`LSDTS backend listening on http://localhost:${PORT}`);
+  console.log(`LSDTS backend listening on http://0.0.0.0:${PORT}`);
+  console.log(`LSDTS backend accessible on http://localhost:${PORT} and network IP:${PORT}`);
 });
 
 

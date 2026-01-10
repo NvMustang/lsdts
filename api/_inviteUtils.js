@@ -15,8 +15,9 @@ export function computeStatus(invite, yesCount, now) {
   if (!confirmBy) return { status: "OPEN", closureCause: "" };
   // Utiliser >= pour fermer dès que l'heure est atteinte (important pour "confirmation immédiate")
   if (now.getTime() >= confirmBy.getTime()) return { status: "CLOSED", closureCause: "EXPIRED" };
+  // capacity_max atteint : fermer avec CLOSED (pas d'état FULL séparé)
   if (invite.capacity_max !== null && yesCount >= invite.capacity_max)
-    return { status: "FULL", closureCause: "FULL" };
+    return { status: "CLOSED", closureCause: "FULL" };
   return { status: "OPEN", closureCause: "" };
 }
 
@@ -35,5 +36,22 @@ export function convertMaybeToNoIfExpired(invite, now, counts) {
   if (!confirmBy || now.getTime() < confirmBy.getTime()) return counts;
   // MAYBE counts as NO after expiration (server conversion).
   return { ...counts, no: counts.no + counts.maybe, maybe: 0 };
+}
+
+/**
+ * Calcule le verdict d'une invitation clôturée
+ * @param {Object} invite - L'invitation avec capacity_min
+ * @param {number} yesCount - Nombre de réponses "YES"
+ * @returns {string} "SUCCESS" ou "FAILURE"
+ */
+export function computeVerdict(invite, yesCount) {
+  const capacityMin = invite?.capacity_min !== null && invite?.capacity_min !== undefined
+    ? Number.parseInt(String(invite.capacity_min), 10)
+    : 2;
+  if (Number.isNaN(capacityMin) || capacityMin < 2) {
+    // Valeur par défaut si invalide
+    return yesCount >= 2 ? "SUCCESS" : "FAILURE";
+  }
+  return yesCount >= capacityMin ? "SUCCESS" : "FAILURE";
 }
 

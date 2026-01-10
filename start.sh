@@ -67,6 +67,16 @@ echo -e "${GREEN}✅ Serveurs lancés !${NC}"
 echo -e "${BLUE}Backend PID: $BACKEND_PID${NC}"
 echo -e "${BLUE}Frontend PID: $FRONTEND_PID${NC}"
 echo ""
+
+# Afficher l'adresse IP locale pour accès réseau
+LOCAL_IP=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo "")
+if [ ! -z "$LOCAL_IP" ]; then
+  echo -e "${GREEN}📱 Accès depuis le réseau local:${NC}"
+  echo -e "  Frontend: http://$LOCAL_IP:5173"
+  echo -e "  Backend:  http://$LOCAL_IP:8787"
+  echo ""
+fi
+
 echo -e "${BLUE}📋 Logs:${NC}"
 echo -e "  Backend:  tail -f /tmp/lsdts-backend.log"
 echo -e "  Frontend: tail -f /tmp/lsdts-frontend.log"
