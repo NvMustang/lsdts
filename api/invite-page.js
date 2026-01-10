@@ -80,8 +80,14 @@ export default async function handler(req, res) {
     const host = req.headers.host || '';
     const canonicalUrl = `${protocol}://${host}/i/${inviteId}`;
     
-    // URL de l'image OG
-    const ogImageUrl = `${protocol}://${host}/api/og-image?inviteId=${encodeURIComponent(inviteId)}${hasQueryParams ? `&t=${encodeURIComponent(req.query.t)}&c=${encodeURIComponent(req.query.c)}` : ''}`;
+    // URL de l'image OG - toujours inclure t et c (soit depuis query params, soit depuis backend)
+    let ogImageParams = `inviteId=${encodeURIComponent(inviteId)}`;
+    if (hasQueryParams) {
+      ogImageParams += `&t=${encodeURIComponent(req.query.t)}&c=${encodeURIComponent(req.query.c)}`;
+    } else if (invite) {
+      ogImageParams += `&t=${encodeURIComponent(invite.title)}&c=${encodeURIComponent(invite.confirm_by)}`;
+    }
+    const ogImageUrl = `${protocol}://${host}/api/og-image?${ogImageParams}`;
     
     // OG Description optionnelle : "Décision avant HH:MM" et "Répondre ici 👈"
     // decisionTime doit toujours être présent (confirm_by est obligatoire selon P0_01)
