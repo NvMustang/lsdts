@@ -53,7 +53,56 @@ export default async function handler(req, res) {
       return text(res, 500, "Missing confirm_by");
     }
 
-    // Générer l'image OG : 1200x630px
+    // Pictogrammes SVG (P06 : accent navy)
+    const clockIcon = React.createElement(
+      "svg",
+      {
+        width: "32",
+        height: "32",
+        viewBox: "0 0 24 24",
+        fill: "none",
+        stroke: "#1e3a5f",
+        strokeWidth: "2",
+        strokeLinecap: "round",
+        strokeLinejoin: "round",
+      },
+      React.createElement("circle", { cx: "12", cy: "12", r: "10" }),
+      React.createElement("polyline", { points: "12 6 12 12 16 14" })
+    );
+
+    const arrowRightIcon = React.createElement(
+      "svg",
+      {
+        width: "32",
+        height: "32",
+        viewBox: "0 0 24 24",
+        fill: "none",
+        stroke: "#1e3a5f",
+        strokeWidth: "2.5",
+        strokeLinecap: "round",
+        strokeLinejoin: "round",
+      },
+      React.createElement("line", { x1: "5", y1: "12", x2: "19", y2: "12" }),
+      React.createElement("polyline", { points: "12 5 19 12 12 19" })
+    );
+
+    const arrowLeftIcon = React.createElement(
+      "svg",
+      {
+        width: "32",
+        height: "32",
+        viewBox: "0 0 24 24",
+        fill: "none",
+        stroke: "#1e3a5f",
+        strokeWidth: "2.5",
+        strokeLinecap: "round",
+        strokeLinejoin: "round",
+      },
+      React.createElement("line", { x1: "19", y1: "12", x2: "5", y2: "12" }),
+      React.createElement("polyline", { points: "12 19 5 12 12 5" })
+    );
+
+    // Générer l'image OG : 1200x630px (P06 : fond crème, texte bleu très foncé)
     const imageResponse = new ImageResponse(
       React.createElement(
         "div",
@@ -66,47 +115,131 @@ export default async function handler(req, res) {
             alignItems: "center",
             justifyContent: "center",
             backgroundColor: "#fdfbf7",
-            padding: "80px",
-            fontFamily: "sans-serif",
+            padding: "50px 60px",
+            fontFamily: "Inter, system-ui, -apple-system, sans-serif",
           },
         },
+        // Conteneur centré verticalement
         React.createElement(
           "div",
           {
             style: {
-              fontSize: "56px",
-              fontWeight: "bold",
-              textAlign: "center",
-              color: "#1a1a1a",
-              marginBottom: "40px",
-              lineHeight: "1.2",
-              maxWidth: "1000px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              width: "100%",
             },
           },
-          title
-        ),
-        React.createElement(
-          "div",
-          {
-            style: {
-              fontSize: "36px",
-              color: "#666",
-              marginBottom: "30px",
-              textAlign: "center",
+          // Titre
+          React.createElement(
+            "div",
+            {
+              style: {
+                fontSize: "64px",
+                fontWeight: "500",
+                textAlign: "center",
+                color: "#0a2540",
+                marginBottom: "35px",
+                lineHeight: "1.2",
+                width: "100%",
+              },
             },
-          },
-          `Décision avant ${decisionTime}`
-        ),
-        React.createElement(
-          "div",
-          {
-            style: {
-              fontSize: "32px",
-              color: "#1a1a1a",
-              textAlign: "center",
+            title
+          ),
+          // Ligne de séparation (P06 : 1px, largeur du texte du bas)
+          React.createElement(
+            "div",
+            {
+              style: {
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: "35px",
+              },
             },
-          },
-          "Répondre ici 👈"
+            React.createElement(
+              "div",
+              {
+                style: {
+                  width: "400px",
+                  height: "1px",
+                  backgroundColor: "#8a9ba8",
+                },
+              }
+            )
+          ),
+          // Décision avec pictogramme horloge
+          React.createElement(
+            "div",
+            {
+              style: {
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "12px",
+                marginBottom: "35px",
+              },
+            },
+            clockIcon,
+            React.createElement(
+              "div",
+              {
+                style: {
+                  fontSize: "32px",
+                  color: "#4a5568",
+                  fontWeight: "400",
+                },
+              },
+              `Décision avant ${decisionTime}`
+            )
+          ),
+          // Ligne de séparation (même largeur que "Répondre ici" avec flèches)
+          React.createElement(
+            "div",
+            {
+              style: {
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: "35px",
+              },
+            },
+            React.createElement(
+              "div",
+              {
+                style: {
+                  width: "400px",
+                  height: "1px",
+                  backgroundColor: "#8a9ba8",
+                },
+              }
+            )
+          ),
+          // Répondre ici avec flèches (→ Répondre ici ←)
+          React.createElement(
+            "div",
+            {
+              style: {
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "16px",
+              },
+            },
+            arrowRightIcon,
+            React.createElement(
+              "div",
+              {
+                style: {
+                  fontSize: "28px",
+                  color: "#0a2540",
+                  fontWeight: "400",
+                },
+              },
+              "Répondre ici"
+            ),
+            arrowLeftIcon
+          )
         )
       ),
       {
@@ -121,7 +254,9 @@ export default async function handler(req, res) {
     
     res.statusCode = 200;
     res.setHeader("content-type", "image/png");
+    res.setHeader("content-length", buffer.length.toString());
     res.setHeader("cache-control", "public, max-age=31536000, immutable");
+    res.setHeader("access-control-allow-origin", "*");
     res.end(buffer);
   } catch (e) {
     console.error("[og-image] Error:", e);

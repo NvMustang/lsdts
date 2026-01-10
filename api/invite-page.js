@@ -84,9 +84,10 @@ export default async function handler(req, res) {
     let ogImageParams = `inviteId=${encodeURIComponent(inviteId)}`;
     if (hasQueryParams) {
       ogImageParams += `&t=${encodeURIComponent(req.query.t)}&c=${encodeURIComponent(req.query.c)}`;
-    } else if (invite) {
+    } else if (invite && invite.title && invite.confirm_by) {
       ogImageParams += `&t=${encodeURIComponent(invite.title)}&c=${encodeURIComponent(invite.confirm_by)}`;
     }
+    // Si aucun paramètre disponible, l'image OG retournera une erreur (normal, car confirm_by est obligatoire)
     const ogImageUrl = `${protocol}://${host}/api/og-image?${ogImageParams}`;
     
     // OG Description optionnelle : "Décision avant HH:MM" et "Répondre ici 👈"
