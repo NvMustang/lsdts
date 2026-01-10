@@ -11,7 +11,7 @@ function clampInt(n, min, max) {
 
 
 function parseLocalDateTimeLocalString(value) {
-  // value: YYYY-MM-DDTHH:MM
+  // value: YYYY-MM-DDTHH:MM (maintenant en UTC depuis le frontend)
   const s = String(value || "");
   const parts = s.split("T");
   if (parts.length !== 2) return { error: "Invalid datetime" };
@@ -21,7 +21,8 @@ function parseLocalDateTimeLocalString(value) {
   if (!y || !m || !d || !Number.isFinite(hh) || !Number.isFinite(mm)) return { error: "Invalid datetime" };
   // Minutes doivent être 00, 15, 30 ou 45 (correspond au picker)
   if (!(mm === 0 || mm === 30)) return { error: "Invalid datetime" };
-  const dt = new Date(y, m - 1, d, hh, mm, 0, 0);
+  // Parser comme UTC (le frontend envoie maintenant en UTC)
+  const dt = new Date(Date.UTC(y, m - 1, d, hh, mm, 0, 0));
   if (Number.isNaN(dt.getTime())) return { error: "Invalid datetime" };
   return { date: dt, hasTime: true };
 }
@@ -107,16 +108,17 @@ export default async function handler(req, res) {
     return badRequest(res, "Confirmation invalide.");
   }
 
-  // Calculer confirm_by en string (même format que when_at_local)
-  const formatDate = (d) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const da = String(d.getDate()).padStart(2, "0");
-    const hh = String(d.getHours()).padStart(2, "0");
-    const mm = String(d.getMinutes()).padStart(2, "0");
+  // Calculer confirm_by en string (format UTC pour éviter les problèmes de timezone)
+  // Utiliser UTC pour garantir une comparaison cohérente côté serveur
+  const formatDateUTC = (d) => {
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const da = String(d.getUTCDate()).padStart(2, "0");
+    const hh = String(d.getUTCHours()).padStart(2, "0");
+    const mm = String(d.getUTCMinutes()).padStart(2, "0");
     return `${y}-${m}-${da}T${hh}:${mm}`;
   };
-  const confirmByLocal = formatDate(confirmByDate);
+  const confirmByLocal = formatDateUTC(confirmByDate);
 
       let capacityMax = null;
       if (body.capacity_max !== null && body.capacity_max !== undefined && String(body.capacity_max).trim() !== "") {

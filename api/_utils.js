@@ -88,6 +88,33 @@ export function parseDateLocalOrUtc(dateString) {
   return null;
 }
 
+// Parse une date stockée en UTC (pour confirm_by)
+export function parseDateUTC(dateString) {
+  if (!dateString || typeof dateString !== "string") return null;
+  const s = dateString.trim();
+  if (!s) return null;
+  
+  // Parser comme UTC pour garantir une comparaison cohérente
+  // Format attendu: YYYY-MM-DDTHH:MM ou YYYY-MM-DDTHH:MM:SS
+  const parts = s.split("T");
+  if (parts.length === 2) {
+    const [dateStr, timeStr] = parts;
+    const [y, m, d] = dateStr.split("-").map((x) => Number.parseInt(x, 10));
+    const timeParts = timeStr.split(":");
+    const hh = Number.parseInt(timeParts[0] || "0", 10);
+    const mm = Number.parseInt(timeParts[1] || "0", 10);
+    const ss = Number.parseInt(timeParts[2] || "0", 10);
+    
+    if (y && m && d && Number.isFinite(hh) && Number.isFinite(mm)) {
+      // Utiliser Date.UTC pour créer une date en UTC
+      const dateObj = new Date(Date.UTC(y, m - 1, d, hh, mm, ss, 0));
+      if (!Number.isNaN(dateObj.getTime())) return dateObj;
+    }
+  }
+  
+  return null;
+}
+
 // Trouve une invitation dans les rows parsées
 export function findInviteInRows(rows, inviteId) {
   const { idx, rows: data } = rowsToObjects(rows);

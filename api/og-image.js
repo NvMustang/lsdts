@@ -2,7 +2,7 @@ import { ImageResponse } from "@vercel/og";
 import React from "react";
 import { getAccessToken } from "./_sheets.js";
 import { ensureMvpTabs, readAll, TAB_INVITES } from "./_mvpStore.js";
-import { findInviteInRows, parseDateLocalOrUtc } from "./_utils.js";
+import { findInviteInRows, parseDateLocalOrUtc, parseDateUTC } from "./_utils.js";
 import { text } from "./_sheets.js";
 
 const SCOPE_RO = "https://www.googleapis.com/auth/spreadsheets.readonly";
@@ -10,8 +10,10 @@ const SCOPE_RO = "https://www.googleapis.com/auth/spreadsheets.readonly";
 // Formate l'heure pour "Décision avant HH:MM"
 function formatDecisionTime(confirmBy) {
   if (!confirmBy) return null;
-  const d = parseDateLocalOrUtc(confirmBy);
+  // Parser en UTC (nouveau format) avec fallback sur local (anciennes invitations)
+  const d = parseDateUTC(confirmBy) || parseDateLocalOrUtc(confirmBy);
   if (!d) return null;
+  // toLocaleString convertit automatiquement UTC vers l'heure locale de l'utilisateur
   return d.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 }
 

@@ -28,24 +28,41 @@ export default async function handler(req, res) {
     await ensureMvpTabs();
     await getAccessToken(SCOPE_RO);
 
-    // Construire invite depuis les paramètres de l'URL (toujours disponibles)
-    const confirmBy = typeof req.query.confirm_by === "string" && req.query.confirm_by ? req.query.confirm_by : null;
+    // Charger TAB_INVITES pour obtenir confirm_by en UTC (nécessaire pour computeStatus)
+    // L'URL contient confirm_by en heure locale (pour affichage), mais computeStatus a besoin de l'UTC
+    const invitesRows = await readAll(TAB_INVITES, 5000);
+    if (!Array.isArray(invitesRows)) {
+      throw new Error(`Invalid invitesRows: expected array, got ${typeof invitesRows}`);
+    }
+    const inviteFromDb = findInviteInRows(invitesRows, inviteId);
+    
+    // Construire invite depuis les paramètres de l'URL (pour affichage)
+    const confirmByFromUrl = typeof req.query.confirm_by === "string" && req.query.confirm_by ? req.query.confirm_by : null;
     const capacityMax = req.query.capacity_max === "" || !req.query.capacity_max ? null : Number.parseInt(req.query.capacity_max, 10);
-    const invite = {
+    
+    // Pour computeStatus : utiliser confirm_by depuis la base de données (UTC)
+    // Pour l'affichage : utiliser confirm_by depuis l'URL (heure locale)
+    const inviteForStatus = {
       id: inviteId,
-      confirm_by: confirmBy,
+      confirm_by: inviteFromDb?.confirm_by || confirmByFromUrl,
+      capacity_max: Number.isNaN(capacityMax) ? null : capacityMax,
+    };
+    
+    const inviteForDisplay = {
+      id: inviteId,
+      confirm_by: confirmByFromUrl || inviteFromDb?.confirm_by,
       capacity_max: Number.isNaN(capacityMax) ? null : capacityMax,
     };
     // title et when_at sont disponibles dans l'URL pour tous les utilisateurs
     if (req.query.title && req.query.when_at) {
-      invite.title = String(req.query.title);
-      invite.when_at = String(req.query.when_at);
-      invite.when_has_time = req.query.when_has_time === "1";
+      inviteForDisplay.title = String(req.query.title);
+      inviteForDisplay.when_at = String(req.query.when_at);
+      inviteForDisplay.when_has_time = req.query.when_has_time === "1";
     }
     
     // Vérifier que confirm_by est défini (requis pour computeStatus)
-    if (!invite.confirm_by) {
-      throw new Error(`Missing confirm_by in query parameters. Received: ${JSON.stringify(req.query)}`);
+    if (!inviteForStatus.confirm_by) {
+      throw new Error(`Missing confirm_by. Received from DB: ${inviteFromDb?.confirm_by}, from URL: ${confirmByFromUrl}`);
     }
 
     // Charger uniquement TAB_RESPONSES pour calculer le statut
@@ -87,9 +104,10 @@ export default async function handler(req, res) {
     }
 
     // Calculer le statut AVANT la conversion MAYBE->NO
-    const status = computeStatus(invite, yes, now);
+    // Utiliser inviteForStatus avec confirm_by en UTC
+    const status = computeStatus(inviteForStatus, yes, now);
 
-    const conv = convertMaybeToNoIfExpired(invite, now, { yes, no, maybe });
+    const conv = convertMaybeToNoIfExpired(inviteForStatus, now, { yes, no, maybe });
     
     const anonDeviceId = typeof req.query?.anon_device_id === "string" ? req.query.anon_device_id : "";
     const isOrganizer = req.query?.is_organizer === "1";
@@ -158,16 +176,9 @@ export default async function handler(req, res) {
     const isClosed = status.status === "CLOSED";
     
     // Utiliser le verdict stocké dans la base de données si CLOSED
-    // Charger TAB_INVITES si nécessaire (CLOSED) et TAB_VIEWS si organisateur
+    // inviteFromDb est déjà chargé plus haut
     let verdict = null;
-    let views = null;
-    if (isClosed) {
-      // Charger TAB_INVITES pour obtenir capacity_min et verdict (CLOSED)
-      const invitesRows = await readAll(TAB_INVITES, 5000);
-      if (!Array.isArray(invitesRows)) {
-        throw new Error(`Invalid invitesRows: expected array, got ${typeof invitesRows}`);
-      }
-      const inviteFromDb = findInviteInRows(invitesRows, inviteId);
+    if (isClosed && inviteFromDb) {
       if (inviteFromDb?.verdict) {
         // Utiliser le verdict stocké (calculé à la clôture)
         verdict = inviteFromDb.verdict;
@@ -194,14 +205,15 @@ export default async function handler(req, res) {
     }
 
     // Construire la réponse selon les règles de visibilité
+    // Utiliser inviteForDisplay avec confirm_by en heure locale (pour affichage)
     const response = {
       invite: {
-        id: invite.id,
-        title: invite.title,
-        when_at: invite.when_at,
-        when_has_time: invite.when_has_time,
-        confirm_by: invite.confirm_by,
-        capacity_max: invite.capacity_max,
+        id: inviteForDisplay.id,
+        title: inviteForDisplay.title,
+        when_at: inviteForDisplay.when_at,
+        when_has_time: inviteForDisplay.when_has_time,
+        confirm_by: inviteForDisplay.confirm_by,
+        capacity_max: inviteForDisplay.capacity_max,
       },
       status: status.status,
       closure_cause: status.closureCause,

@@ -82,6 +82,30 @@ export function parseLocalDate(dateString) {
   return null;
 }
 
+// Parse une date en UTC (pour confirm_by stocké en UTC)
+export function parseDateUTC(dateString) {
+  if (!dateString || typeof dateString !== "string") return null;
+  const s = dateString.trim();
+  if (!s) return null;
+  
+  const parts = s.split("T");
+  if (parts.length === 2) {
+    const [dateStr, timeStr] = parts;
+    const [y, m, d] = dateStr.split("-").map((x) => Number.parseInt(x, 10));
+    const timeParts = timeStr.split(":");
+    const hh = Number.parseInt(timeParts[0] || "0", 10);
+    const mm = Number.parseInt(timeParts[1] || "0", 10);
+    
+    if (y && m && d && Number.isFinite(hh) && Number.isFinite(mm)) {
+      // Utiliser Date.UTC pour créer une date en UTC
+      const dateObj = new Date(Date.UTC(y, m - 1, d, hh, mm, 0, 0));
+      if (!Number.isNaN(dateObj.getTime())) return dateObj;
+    }
+  }
+  
+  return null;
+}
+
 // Parse et valide capacityMax (2-10 personnes)
 export function parseCapacityMax(value) {
   if (!value || (typeof value === 'string' && !value.trim())) return null;

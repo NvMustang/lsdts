@@ -8,7 +8,8 @@
     "dev": "vite",
     "dev:all": "bash start.sh",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:timezone": "node test-timezone.mjs"
   },
   "dependencies": {
     "@vercel/og": "^0.5.20",
