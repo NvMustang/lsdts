@@ -28,8 +28,7 @@ export default async function handler(req, res) {
     await ensureMvpTabs();
     await getAccessToken(SCOPE_RO);
 
-    // Charger TAB_INVITES pour obtenir confirm_by en UTC (nécessaire pour computeStatus)
-    // L'URL contient confirm_by en heure locale (pour affichage), mais computeStatus a besoin de l'UTC
+    // Charger TAB_INVITES pour obtenir confirm_by (heure locale)
     const invitesRows = await readAll(TAB_INVITES, 5000);
     if (!Array.isArray(invitesRows)) {
       throw new Error(`Invalid invitesRows: expected array, got ${typeof invitesRows}`);
@@ -47,8 +46,7 @@ export default async function handler(req, res) {
       ? null 
       : Number.parseInt(String(capacityMaxRaw), 10);
     
-    // Pour computeStatus : utiliser confirm_by depuis la base de données (UTC)
-    // Pour l'affichage : utiliser confirm_by depuis l'URL (heure locale)
+    // Utiliser confirm_by depuis la base de données ou l'URL (tous en heure locale)
     const inviteForStatus = {
       id: inviteId,
       confirm_by: inviteFromDb?.confirm_by || confirmByFromUrl,
@@ -111,7 +109,7 @@ export default async function handler(req, res) {
     }
 
     // Calculer le statut AVANT la conversion MAYBE->NO
-    // Utiliser inviteForStatus avec confirm_by en UTC
+    // Utiliser inviteForStatus avec confirm_by en heure locale
     const status = computeStatus(inviteForStatus, yes, now);
 
     const conv = convertMaybeToNoIfExpired(inviteForStatus, now, { yes, no, maybe });
@@ -215,7 +213,7 @@ export default async function handler(req, res) {
     }
 
     // Construire la réponse selon les règles de visibilité
-    // Utiliser inviteForDisplay avec confirm_by en heure locale (pour affichage)
+    // Utiliser inviteForDisplay avec confirm_by en heure locale
     const response = {
       invite: {
         id: inviteForDisplay.id,

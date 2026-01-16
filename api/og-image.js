@@ -10,10 +10,10 @@ const SCOPE_RO = "https://www.googleapis.com/auth/spreadsheets.readonly";
 // Formate l'heure pour "Décision avant HH:MM"
 function formatDecisionTime(confirmBy) {
   if (!confirmBy) return null;
-  // Parser en UTC (nouveau format) avec fallback sur local (anciennes invitations)
+  // Parser en heure locale
   const d = parseDateUTC(confirmBy) || parseDateLocalOrUtc(confirmBy);
   if (!d) return null;
-  // toLocaleString convertit automatiquement UTC vers l'heure locale de l'utilisateur
+  // Formater l'heure locale
   return d.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 }
 

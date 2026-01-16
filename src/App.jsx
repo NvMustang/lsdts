@@ -14,8 +14,7 @@ import {
   saveUserName,
   buildShareUrl,
   formatStatus,
-  parseLocalDate,
-  parseDateUTC
+  parseLocalDate
 } from "./lib/utils.js";
 
 const TITLE_MAX_LENGTH = 40;
@@ -186,8 +185,7 @@ function CreateView({ urlParams }) {
 
     // Préparer les valeurs minimales pour l'URL (redirection immédiate)
     // Format simple : YYYY-MM-DDTHH:MM (sans secondes)
-    // Pour when_at : garder l'heure locale (affichage immédiat depuis URL)
-    // Pour confirm_by : convertir en UTC pour le serveur (stockage cohérent)
+    // Tout en heure locale (système) - pas de conversion UTC
     const titleValue = title.trim();
     const formatDateLocal = (d) => {
       const y = d.getFullYear();
@@ -197,20 +195,11 @@ function CreateView({ urlParams }) {
       const mm = String(d.getMinutes()).padStart(2, "0");
       return `${y}-${m}-${da}T${hh}:${mm}`;
     };
-    const formatDateUTC = (d) => {
-      const y = d.getUTCFullYear();
-      const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-      const da = String(d.getUTCDate()).padStart(2, "0");
-      const hh = String(d.getUTCHours()).padStart(2, "0");
-      const mm = String(d.getUTCMinutes()).padStart(2, "0");
-      return `${y}-${m}-${da}T${hh}:${mm}`;
-    };
-    // when_at : heure locale pour l'URL (affichage immédiat)
+    // when_at : heure locale
     const whenAtValue = formatDateLocal(whenDateObj);
-    // confirm_by : UTC pour le serveur (stockage cohérent), mais heure locale pour l'URL (affichage)
+    // confirm_by : heure locale
     const confirmByDate = confirmationAt || whenDateObj;
-    const confirmByValue = formatDateLocal(confirmByDate); // Pour l'URL (affichage)
-    const confirmByValueUTC = formatDateUTC(confirmByDate); // Pour le serveur (stockage)
+    const confirmByValue = formatDateLocal(confirmByDate);
     
     // Construire l'URL directement vers la page principale avec tous les paramètres
     // Évite le passage par /i/{inviteId} qui pourrait ne pas avoir l'invitation encore dans le backend
@@ -223,23 +212,10 @@ function CreateView({ urlParams }) {
       url.searchParams.set('m', String(capacityMaxValue));
     }
 
-    // Préparer le payload API
-    // when_at_local : convertir l'heure locale utilisateur en UTC pour le serveur
-    // Le serveur stockera en UTC, mais l'URL garde l'heure locale pour l'affichage immédiat
-    const formatDateUTCForServer = (d) => {
-      // Convertir l'heure locale en UTC
-      const y = d.getUTCFullYear();
-      const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-      const da = String(d.getUTCDate()).padStart(2, "0");
-      const hh = String(d.getUTCHours()).padStart(2, "0");
-      const mm = String(d.getUTCMinutes()).padStart(2, "0");
-      return `${y}-${m}-${da}T${hh}:${mm}`;
-    };
-    const whenAtValueUTC = formatDateUTCForServer(whenDateObj);
-    
+    // Préparer le payload API - tout en heure locale
     const payload = {
       title: titleValue,
-      when_at_local: whenAtValueUTC, // UTC pour le serveur (cohérent avec confirm_by)
+      when_at_local: whenAtValue, // Heure locale pour le serveur
       confirm_offset: confirmOffset,
       organizer_name: normalizeName(organizerName) || null,
       invite_id: id,
@@ -516,12 +492,11 @@ function InviteContainer({ inviteId, urlParams }) {
   // Calculer le statut initial depuis l'URL (cohérent avec P0_01)
   const computeInitialStatus = (invite) => {
     if (!invite?.confirm_by) return "OPEN";
-    // Parser en UTC (nouveau format) avec fallback sur local (anciennes invitations)
-    const confirmBy = parseDateUTC(invite.confirm_by) || parseLocalDate(invite.confirm_by);
+    // Parser en heure locale
+    const confirmBy = parseLocalDate(invite.confirm_by);
     if (!confirmBy) return "OPEN";
     const now = new Date();
     // Si confirm_by est dans le passé, l'invitation est CLOSED (P0_01)
-    // Les timestamps sont toujours en UTC, donc la comparaison est cohérente
     if (now.getTime() >= confirmBy.getTime()) return "CLOSED";
     return "OPEN";
   };
@@ -846,15 +821,14 @@ function InviteContainer({ inviteId, urlParams }) {
     }
     
     const updateCountdown = () => {
-      // Parser en UTC (nouveau format) avec fallback sur local (anciennes invitations)
-      const confirmBy = parseDateUTC(invite.confirm_by) || parseLocalDate(invite.confirm_by);
+      // Parser en heure locale
+      const confirmBy = parseLocalDate(invite.confirm_by);
       if (!confirmBy) {
         setCountdown("");
         return;
       }
       
       const now = new Date();
-      // Les timestamps sont toujours en UTC, donc la comparaison est cohérente
       const deltaMs = confirmBy.getTime() - now.getTime();
       
       if (deltaMs <= 0) {
@@ -899,8 +873,8 @@ function InviteContainer({ inviteId, urlParams }) {
   
   const confirmText = (() => {
     if (!invite?.confirm_by || !invite?.when_at) return "";
-    // Parser confirm_by en UTC (nouveau format) avec fallback sur local (anciennes invitations)
-    const c = parseDateUTC(invite.confirm_by) || parseLocalDate(invite.confirm_by);
+    // Parser en heure locale
+    const c = parseLocalDate(invite.confirm_by);
     const w = parseLocalDate(invite.when_at);
     if (!c || !w) return "";
     
