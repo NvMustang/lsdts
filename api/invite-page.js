@@ -66,12 +66,18 @@ export default async function handler(req, res) {
       if (req.query.m) {
         urlParams.set("m", req.query.m);
       }
+      if (req.query.img) {
+        urlParams.set("img", req.query.img);
+      }
     } else if (invite) {
       urlParams.set("t", encodeURIComponent(invite.title));
       urlParams.set("w", invite.when_at);
       urlParams.set("c", invite.confirm_by);
       if (invite.capacity_max !== null) {
         urlParams.set("m", String(invite.capacity_max));
+      }
+      if (invite.og_image_url) {
+        urlParams.set("img", encodeURIComponent(invite.og_image_url));
       }
     }
     
@@ -86,8 +92,14 @@ export default async function handler(req, res) {
     let ogImageParams = `inviteId=${encodeURIComponent(inviteId)}`;
     if (hasQueryParams) {
       ogImageParams += `&t=${encodeURIComponent(req.query.t)}&c=${encodeURIComponent(req.query.c)}`;
+      if (req.query.img) {
+        ogImageParams += `&img=${encodeURIComponent(req.query.img)}`;
+      }
     } else if (invite && invite.title && invite.confirm_by) {
       ogImageParams += `&t=${encodeURIComponent(invite.title)}&c=${encodeURIComponent(invite.confirm_by)}`;
+      if (invite.og_image_url) {
+        ogImageParams += `&img=${encodeURIComponent(invite.og_image_url)}`;
+      }
     }
     // Si aucun paramètre disponible, l'image OG retournera une erreur (normal, car confirm_by est obligatoire)
     const ogImageUrl = `${protocol}://${host}/api/og-image?${ogImageParams}`;
