@@ -105,6 +105,7 @@ export function findInviteInRows(rows, inviteId) {
     
     const cap = String(r[idx.capacity_max] || "").trim();
     const capMin = String(r[idx.capacity_min] || "").trim();
+    const ogImageUrl = String(r[idx.og_image_url] || "").trim();
     return {
       rowIndex: i + 2, // 1-based + header
       id: inviteId,
@@ -114,6 +115,7 @@ export function findInviteInRows(rows, inviteId) {
       confirm_by: String(r[idx.confirm_by] || ""),
       capacity_max: cap ? Number.parseInt(cap, 10) : null,
       capacity_min: capMin ? Number.parseInt(capMin, 10) : 2,
+      og_image_url: ogImageUrl || null,
       created_at: String(r[idx.created_at] || ""),
       status: String(r[idx.status] || "OPEN") || "OPEN",
       closed_at: String(r[idx.closed_at] || ""),

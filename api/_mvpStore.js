@@ -28,6 +28,7 @@ export const HEADERS = {
     "confirm_by",
     "capacity_max",
     "capacity_min",
+    "og_image_url",
     "created_at",
     "status",
     "closed_at",

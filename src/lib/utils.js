@@ -2,6 +2,7 @@
 export function parseUrlParams() {
   const params = new URLSearchParams(window.location.search);
   const m = params.get("m");
+  const img = params.get("img");
   // Si m est null (paramètre absent) ou la chaîne "undefined", retourner undefined
   return {
     inviteId: params.get("inviteId"),
@@ -9,6 +10,7 @@ export function parseUrlParams() {
     w: params.get("w"),
     c: params.get("c"),
     m: (m !== null && m !== "undefined") ? m : undefined,
+    img: (img !== null && img !== "undefined") ? img : undefined,
   };
 }
 

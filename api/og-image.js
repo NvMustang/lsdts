@@ -25,6 +25,7 @@ export default async function handler(req, res) {
     let title = "";
     let decisionTime = null;
     let confirmBy = null;
+    let ogImageUrl = null;
 
     // Priorité 1 : paramètres de query string (cas où l'invitation n'est pas encore dans le backend)
     const hasQueryParams = req.query?.t && req.query?.c;
@@ -32,6 +33,7 @@ export default async function handler(req, res) {
       title = decodeURIComponent(req.query.t);
       confirmBy = req.query.c;
       decisionTime = formatDecisionTime(req.query.c);
+      ogImageUrl = req.query?.img ? decodeURIComponent(req.query.img) : null;
     } else {
       // Priorité 2 : données depuis le backend
       await ensureMvpTabs();
@@ -42,6 +44,7 @@ export default async function handler(req, res) {
         title = invite.title || "";
         confirmBy = invite.confirm_by;
         decisionTime = formatDecisionTime(invite.confirm_by);
+        ogImageUrl = invite.og_image_url || null;
       }
     }
 
@@ -104,35 +107,42 @@ export default async function handler(req, res) {
       React.createElement("polyline", { points: "12 19 5 12 12 5" })
     );
 
-    // Générer l'image OG : 1200x630px (P06 : fond crème, texte bleu très foncé)
-    const imageResponse = new ImageResponse(
-      React.createElement(
-        "div",
-        {
-          style: {
-            width: "100%",
-            height: "100%",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "#fdfbf7",
-            padding: "50px 60px",
-            fontFamily: "Inter, system-ui, -apple-system, sans-serif",
-          },
-        },
-        // Conteneur centré verticalement
+    // Si une image custom est uploadée, utiliser un layout simplifié avec l'image en fond
+    let imageResponse;
+    if (ogImageUrl) {
+      // Fetch l'image pour l'inclure
+      const imageData = await fetch(ogImageUrl).then(r => r.arrayBuffer());
+      const base64Image = Buffer.from(imageData).toString('base64');
+      const imageSrc = `data:image/jpeg;base64,${base64Image}`;
+
+      imageResponse = new ImageResponse(
         React.createElement(
           "div",
           {
             style: {
+              width: "100%",
+              height: "100%",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              width: "100%",
+              justifyContent: "center",
+              position: "relative",
+              fontFamily: "Inter, system-ui, -apple-system, sans-serif",
             },
           },
-          // Titre
+          // Image de fond
+          React.createElement("img", {
+            src: imageSrc,
+            style: {
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+            },
+          }),
+          // Titre avec text-stroke et drop shadow
           React.createElement(
             "div",
             {
@@ -140,115 +150,170 @@ export default async function handler(req, res) {
                 fontSize: "64px",
                 fontWeight: "500",
                 textAlign: "center",
-                color: "#0a2540",
-                marginBottom: "35px",
+                color: "#ffffff",
                 lineHeight: "1.2",
                 width: "100%",
+                padding: "0 60px",
+                position: "relative",
+                zIndex: 1,
+                textShadow: "-4px -4px 0 #fff, 4px -4px 0 #fff, -4px 4px 0 #fff, 4px 4px 0 #fff, 0 0 20px rgba(0,0,0,0.8)",
               },
             },
             title
-          ),
-          // Ligne de séparation (P06 : 1px, largeur du texte du bas)
-          React.createElement(
-            "div",
-            {
-              style: {
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: "35px",
-              },
-            },
-            React.createElement(
-              "div",
-              {
-                style: {
-                  width: "400px",
-                  height: "1px",
-                  backgroundColor: "#8a9ba8",
-                },
-              }
-            )
-          ),
-          // Décision avec pictogramme horloge
-          React.createElement(
-            "div",
-            {
-              style: {
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "12px",
-                marginBottom: "35px",
-              },
-            },
-            clockIcon,
-            React.createElement(
-              "div",
-              {
-                style: {
-                  fontSize: "32px",
-                  color: "#4a5568",
-                  fontWeight: "400",
-                },
-              },
-              `Décision avant ${decisionTime}`
-            )
-          ),
-          // Ligne de séparation (même largeur que "Répondre ici" avec flèches)
-          React.createElement(
-            "div",
-            {
-              style: {
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: "35px",
-              },
-            },
-            React.createElement(
-              "div",
-              {
-                style: {
-                  width: "400px",
-                  height: "1px",
-                  backgroundColor: "#8a9ba8",
-                },
-              }
-            )
-          ),
-          // Répondre ici avec flèches (→ Répondre ici ←)
-          React.createElement(
-            "div",
-            {
-              style: {
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "16px",
-              },
-            },
-            arrowRightIcon,
-            React.createElement(
-              "div",
-              {
-                style: {
-                  fontSize: "28px",
-                  color: "#0a2540",
-                  fontWeight: "400",
-                },
-              },
-              "Répondre ici"
-            ),
-            arrowLeftIcon
           )
-        )
-      ),
-      {
-        width: 1200,
-        height: 630,
-      }
-    );
+        ),
+        {
+          width: 1200,
+          height: 630,
+        }
+      );
+    } else {
+      // Générer l'image OG par défaut : 1200x630px (P06 : fond crème, texte bleu très foncé)
+      imageResponse = new ImageResponse(
+        React.createElement(
+          "div",
+          {
+            style: {
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: "#fdfbf7",
+              padding: "50px 60px",
+              fontFamily: "Inter, system-ui, -apple-system, sans-serif",
+            },
+          },
+          // Conteneur centré verticalement
+          React.createElement(
+            "div",
+            {
+              style: {
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                width: "100%",
+              },
+            },
+            // Titre
+            React.createElement(
+              "div",
+              {
+                style: {
+                  fontSize: "64px",
+                  fontWeight: "500",
+                  textAlign: "center",
+                  color: "#0a2540",
+                  marginBottom: "35px",
+                  lineHeight: "1.2",
+                  width: "100%",
+                },
+              },
+              title
+            ),
+            // Ligne de séparation (P06 : 1px, largeur du texte du bas)
+            React.createElement(
+              "div",
+              {
+                style: {
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: "35px",
+                },
+              },
+              React.createElement(
+                "div",
+                {
+                  style: {
+                    width: "400px",
+                    height: "1px",
+                    backgroundColor: "#8a9ba8",
+                  },
+                }
+              )
+            ),
+            // Décision avec pictogramme horloge
+            React.createElement(
+              "div",
+              {
+                style: {
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "12px",
+                  marginBottom: "35px",
+                },
+              },
+              clockIcon,
+              React.createElement(
+                "div",
+                {
+                  style: {
+                    fontSize: "32px",
+                    color: "#4a5568",
+                    fontWeight: "400",
+                  },
+                },
+                `Décision avant ${decisionTime}`
+              )
+            ),
+            // Ligne de séparation (même largeur que "Répondre ici" avec flèches)
+            React.createElement(
+              "div",
+              {
+                style: {
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: "35px",
+                },
+              },
+              React.createElement(
+                "div",
+                {
+                  style: {
+                    width: "400px",
+                    height: "1px",
+                    backgroundColor: "#8a9ba8",
+                  },
+                }
+              )
+            ),
+            // Répondre ici avec flèches (→ Répondre ici ←)
+            React.createElement(
+              "div",
+              {
+                style: {
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "16px",
+                },
+              },
+              arrowRightIcon,
+              React.createElement(
+                "div",
+                {
+                  style: {
+                    fontSize: "28px",
+                    color: "#0a2540",
+                    fontWeight: "400",
+                  },
+                },
+                "Répondre ici"
+              ),
+              arrowLeftIcon
+            )
+          )
+        ),
+        {
+          width: 1200,
+          height: 630,
+        }
+      );
+    }
 
     // Convertir la Response Web API en réponse Node.js
     const arrayBuffer = await imageResponse.arrayBuffer();

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import TimeSlotPicker from "./components/TimeSlotPicker.jsx";
+import ImageCropper from "./components/ImageCropper.jsx";
 import { createInvite, getInviteResponses, recordView, respond } from "./lib/api.js";
 import { 
   normalizeName,
@@ -84,6 +85,13 @@ function CreateView({ urlParams }) {
   const [confirmOffset, setConfirmOffset] = useState("30m");
   const [availableOffsets, setAvailableOffsets] = useState([]);
   const [pickerOpen, setPickerOpen] = useState(false);
+  
+  // États pour l'upload d'image
+  const [ogImage, setOgImage] = useState(null); // URL de l'image uploadée
+  const [selectedFile, setSelectedFile] = useState(null); // Fichier sélectionné pour crop
+  const [cropperOpen, setCropperOpen] = useState(false); // Modal cropper
+  const [uploading, setUploading] = useState(false); // État upload en cours
+  const fileInputRef = useRef(null);
 
   // Calculer les offsets disponibles selon le delta effectif
   useEffect(() => {
@@ -163,6 +171,74 @@ function CreateView({ urlParams }) {
     ? new Date(whenDateObj.getTime() - offsetMs)
     : null;
 
+  // Gérer la sélection du fichier
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Vérifier le type
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      alert("Format non supporté. Utilisez jpg, png ou webp.");
+      return;
+    }
+    
+    // Vérifier la taille (2MB max)
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Image trop lourde. Maximum 2MB.");
+      return;
+    }
+    
+    setSelectedFile(file);
+    setCropperOpen(true);
+  };
+
+  // Gérer le crop de l'image
+  const handleCrop = async (blob) => {
+    setUploading(true);
+    setCropperOpen(false);
+    
+    try {
+      // Upload vers Vercel Blob
+      const formData = new FormData();
+      formData.append("file", blob, "og-image.jpg");
+      
+      const response = await fetch("/api/upload-image", {
+        method: "POST",
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error("Upload échoué");
+      }
+      
+      const data = await response.json();
+      setOgImage(data.url);
+    } catch (e) {
+      console.error("[CreateView] Upload échoué:", e);
+      alert("Upload échoué. Réessayez.");
+    } finally {
+      setUploading(false);
+      setSelectedFile(null);
+    }
+  };
+
+  // Annuler le crop
+  const handleCancelCrop = () => {
+    setCropperOpen(false);
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // Supprimer l'image
+  const handleRemoveImage = () => {
+    setOgImage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const handleCreate = async () => {
     if (!canSubmit || !whenDateObj) return;
     
@@ -211,6 +287,9 @@ function CreateView({ urlParams }) {
     if (capacityMaxValue != null && typeof capacityMaxValue === 'number' && !Number.isNaN(capacityMaxValue)) {
       url.searchParams.set('m', String(capacityMaxValue));
     }
+    if (ogImage) {
+      url.searchParams.set('img', encodeURIComponent(ogImage));
+    }
 
     // Préparer le payload API - tout en heure locale
     const payload = {
@@ -221,6 +300,7 @@ function CreateView({ urlParams }) {
       invite_id: id,
       capacity_min: capacityMinValue,
       capacity_max: capacityMaxValue,
+      og_image_url: ogImage || null,
     };
 
     // Sauvegarder le nom utilisateur (rapide, localStorage)
@@ -270,6 +350,46 @@ function CreateView({ urlParams }) {
                 maxLength={TITLE_MAX_LENGTH}
               />
               <div className="formHelper">Caractères restants : {titleRemaining}</div>
+            </div>
+          </div>
+
+          <div className="formRow">
+            <label className="formLabel" htmlFor="ogImage">
+              Image (optionnel)
+            </label>
+            <div className="formControl">
+              {!ogImage ? (
+                <>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    id="ogImage"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleFileSelect}
+                    style={{ display: 'none' }}
+                  />
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    {uploading ? "Upload en cours..." : "Uploader une image"}
+                  </button>
+                  <div className="formHelper">jpg, png ou webp - Max 2MB - Utilisée dans l'invitation et l'Open Graph</div>
+                </>
+              ) : (
+                <div className="upload-preview">
+                  <img src={ogImage} alt="Preview" />
+                  <button
+                    type="button"
+                    className="upload-preview-remove"
+                    onClick={handleRemoveImage}
+                  >
+                    Supprimer
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -466,6 +586,19 @@ function CreateView({ urlParams }) {
           </div>
         </div>
       )}
+
+      {/* Modal ImageCropper */}
+      {cropperOpen && selectedFile && (
+        <div className="modalOverlay" onClick={handleCancelCrop}>
+          <div className="modalContent" onClick={(e) => e.stopPropagation()}>
+            <ImageCropper
+              file={selectedFile}
+              onCrop={handleCrop}
+              onCancel={handleCancelCrop}
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -476,7 +609,7 @@ function CreateView({ urlParams }) {
 
 function InviteContainer({ inviteId, urlParams }) {
   // Construire l'invitation depuis l'URL pour affichage immédiat
-  const { t, w, c, m } = urlParams;
+  const { t, w, c, m, img } = urlParams;
   
   const urlInvite = t && w && c ? {
     id: inviteId,
@@ -485,6 +618,7 @@ function InviteContainer({ inviteId, urlParams }) {
     when_has_time: true,
     confirm_by: c,
     capacity_max: parseCapacityMax(m),
+    og_image_url: img ? decodeURIComponent(img) : null,
   } : null;
 
   const [error, setError] = useState(false);
@@ -997,6 +1131,13 @@ function InviteContainer({ inviteId, urlParams }) {
 
   return (
     <PageShell>
+      {/* Image header (si présente) */}
+      {invite.og_image_url && (
+        <div className="invite-header-image">
+          <img src={invite.og_image_url} alt={invite.title} />
+        </div>
+      )}
+
       {/* Section centralisée : Titre et infos */}
       <div className="section">
         <h1 className="title">{invite.title}</h1>

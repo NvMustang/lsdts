@@ -137,6 +137,9 @@ export default async function handler(req, res) {
       let inviteId = typeof body.invite_id === "string" && body.invite_id.length === 32 ? body.invite_id : randomId();
       const createdAt = nowIso();
 
+  // Image OG (optionnelle)
+  const ogImageUrl = typeof body.og_image_url === "string" && body.og_image_url.trim() ? body.og_image_url.trim() : "";
+
   // Sauvegarder les dates telles quelles (format YYYY-MM-DDTHH:MM, pas de conversion)
   const inviteRow = [
     inviteId,
@@ -146,6 +149,7 @@ export default async function handler(req, res) {
     confirmByLocal, // Format YYYY-MM-DDTHH:MM
     capacityMax === null ? "" : String(capacityMax),
     String(capacityMin),
+    ogImageUrl,
     createdAt,
     "OPEN",
     "",
