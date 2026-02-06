@@ -14,7 +14,6 @@ import {
   getUserName,
   saveUserName,
   buildShareUrl,
-  formatStatus,
   parseLocalDate
 } from "./lib/utils.js";
 
@@ -1305,7 +1304,7 @@ function InviteContainer({ inviteId, urlParams }) {
                 type="button" 
                 onClick={handleCopyUrl}
               >
-                {linkCopied ? "Lien copié !" : "Copier le lien"}
+                {linkCopied ? "Lien copié dans le presse-papiers !" : "Inviter d'autres personnes"}
               </button>
             </div>
           )}

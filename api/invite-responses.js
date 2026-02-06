@@ -20,8 +20,6 @@ export default async function handler(req, res) {
   const inviteId = typeof req.query?.inviteId === "string" ? req.query.inviteId : "";
   if (!inviteId) return badRequest(res, "Missing inviteId");
 
-  const isOrganizer = req.query?.is_organizer === "1";
-
   try {
     // ensureMvpTabs() nécessite SCOPE_RW, mais on peut l'appeler avant getAccessToken(SCOPE_RO)
     // car il gère son propre token en interne

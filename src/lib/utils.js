@@ -48,14 +48,6 @@ export function buildShareUrl(inviteId) {
   return `${window.location.origin}/i/${inviteId}`;
 }
 
-export function formatStatus(status) {
-  if (status === "LOADING") return "Chargement...";
-  if (status === "CLOSED") return "Clôturé";
-  if (status === "OPEN") return "Ouvert";
-  return status;
-}
-
-
 export function normalizeName(name) {
   return String(name || "").trim().replace(/\s+/g, " ");
 }

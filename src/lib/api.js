@@ -205,20 +205,3 @@ export async function getInviteResponses(inviteId, anonDeviceId, isOrganizer = f
   }
 }
 
-export async function exportAll() {
-  try {
-    return await requestJson("/api/invites", { method: "GET", query: { kind: "all" } });
-  } catch (err) {
-    console.error("[API] exportAll échoué:", {
-      error: {
-        type: err.type,
-        message: err.message,
-        status: err.status,
-        code: err.code,
-        details: err.details,
-      },
-    });
-    throw err;
-  }
-}
-
