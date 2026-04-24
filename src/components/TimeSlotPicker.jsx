@@ -9,11 +9,11 @@ export default function TimeSlotPicker({ value, onChange }) {
   const startYRef = useRef(0);
   const scrollStartRef = useRef(0);
 
-  // Générer les 2 prochains jours (aujourd'hui et demain) - mémorisé
+  // Générer une plage de dates (aujourd'hui -> +365j) - mémorisé
   const dates = useMemo(() => {
     const result = [];
     const now = new Date();
-    for (let i = 0; i <= 1; i++) {
+    for (let i = 0; i <= 365; i++) {
       const d = new Date(now);
       d.setDate(d.getDate() + i);
       d.setHours(0, 0, 0, 0);
@@ -229,11 +229,12 @@ export default function TimeSlotPicker({ value, onChange }) {
       >
         <div className="time-picker-spacer" />
         {dates.map((d, i) => {
-          const label = i === 0 
-            ? `Aujourd'hui`
-            : i === 1
-            ? `Demain`
-            : d.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' });
+          const label =
+            i === 0
+              ? `Aujourd'hui`
+              : i === 1
+                ? `Demain`
+                : d.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' });
           return <div key={i} className="time-picker-item" onClick={() => handleItemClick('date', i)}>{label}</div>;
         })}
         <div className="time-picker-spacer" />

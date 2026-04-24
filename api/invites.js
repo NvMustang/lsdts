@@ -27,12 +27,6 @@ function parseLocalDateTimeLocalString(value) {
   return { date: dt, hasTime: true };
 }
 
-function within7Days(date, now) {
-  const max = new Date(now);
-  max.setDate(max.getDate() + 7);
-  return date.getTime() <= max.getTime();
-}
-
 export default async function handler(req, res) {
   if (req.method === "GET") {
     // Export logs/tables (JSON)
@@ -77,8 +71,6 @@ export default async function handler(req, res) {
   // Valider le format (parse pour vérifier, mais on garde la string originale)
   const whenParsed = parseLocalDateTimeLocalString(whenAtLocal);
   if (whenParsed.error) return badRequest(res, whenParsed.error);
-
-  if (!within7Days(whenParsed.date, now)) return badRequest(res, "Quand out of range");
   
   // Valider que l'événement est au minimum à "now arrondi à 30 min sup + 30 min"
   // Pour laisser au minimum 30 min aux guests pour répondre

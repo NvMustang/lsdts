@@ -125,3 +125,7 @@ Définir le **rendu UI par état** : layout, structure, ordre des blocs, comport
 - Tous les textes sont dans P0_04 (source de vérité pour wording)
 - Pas de variantes dans le rendu
 - Les données de l'URL (titre, date, capacité) sont la source de vérité pour l'affichage immédiat
+
+## Contraintes de date (Quand)
+- Aucune limite haute: l’organisateur peut choisir une date future arbitrairement.
+- Contrainte minimale uniquement: la date doit être \(\ge\) “now arrondi à la demi-heure supérieure” + 30 min (temps minimal laissé aux invités).
