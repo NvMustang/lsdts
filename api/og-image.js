@@ -7,14 +7,30 @@ import { text } from "./_sheets.js";
 
 const SCOPE_RO = "https://www.googleapis.com/auth/spreadsheets.readonly";
 
-// Formate l'heure pour "Décision avant HH:MM"
+// Formate "Décision avant …"
+// - si échéance imminente (aujourd'hui ou demain) : HH:MM
+// - sinon : JJ/MM HH:MM (évite l'ambiguïté quand la date est lointaine)
 function formatDecisionTime(confirmBy) {
   if (!confirmBy) return null;
   // Parser en heure locale
   const d = parseDateUTC(confirmBy) || parseDateLocalOrUtc(confirmBy);
   if (!d) return null;
-  // Formater l'heure locale
-  return d.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+
+  const now = new Date();
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const confirmDay = new Date(d);
+  confirmDay.setHours(0, 0, 0, 0);
+
+  const time = d.toLocaleString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  const isToday = confirmDay.getTime() === today.getTime();
+  const isTomorrow = confirmDay.getTime() === tomorrow.getTime();
+  if (isToday || isTomorrow) return time;
+
+  const date = d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit" });
+  return `${date} ${time}`;
 }
 
 export default async function handler(req, res) {

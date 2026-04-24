@@ -51,7 +51,7 @@ PM NOTE — 00_INDEX.md (version consolidée v2)
   - Ligne 1 :
     → **Titre de la proposition** (court, factuel)
   - Ligne 2 :
-    → **Décision avant HH:MM**
+    → **Décision avant HH:MM** (si échéance aujourd'hui/demain), sinon **Décision avant JJ/MM HH:MM**
   - Ligne 3 :
     → **Répondre ici 👈**
   - Interdits :
