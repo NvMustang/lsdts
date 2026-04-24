@@ -13,7 +13,7 @@ function escapeHtml(s) {
     .replace(/'/g, "&#39;");
 }
 
-// Formate "Décision avant …"
+// Formate "Confirmation demandée avant …"
 // - si échéance imminente (aujourd'hui ou demain) : HH:MM
 // - sinon : JJ/MM HH:MM (évite l'ambiguïté quand la date est lointaine)
 function formatDecisionTime(confirmBy) {
@@ -120,11 +120,11 @@ export default async function handler(req, res) {
     // Si aucun paramètre disponible, l'image OG retournera une erreur (normal, car confirm_by est obligatoire)
     const ogImageUrl = `${protocol}://${host}/api/og-image?${ogImageParams}`;
     
-    // OG Description optionnelle : "Décision avant HH:MM" et "Répondre ici 👈"
+    // OG Description optionnelle : "Confirmation demandée avant …" et "Répondre ici 👈"
     // decisionTime doit toujours être présent (confirm_by est obligatoire selon P0_01)
     let ogDescription = "";
     if (decisionTime) {
-      ogDescription = `Décision avant ${decisionTime}. Répondre ici 👈`;
+      ogDescription = `Confirmation demandée avant ${decisionTime}. Répondre ici 👈`;
     } else {
       // Fallback de sécurité (ne devrait pas arriver en production normale)
       ogDescription = "Répondre ici 👈";

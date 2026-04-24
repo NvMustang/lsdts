@@ -7,7 +7,7 @@ import { text } from "./_sheets.js";
 
 const SCOPE_RO = "https://www.googleapis.com/auth/spreadsheets.readonly";
 
-// Formate "Décision avant …"
+// Formate "Confirmation demandée avant …"
 // - si échéance imminente (aujourd'hui ou demain) : HH:MM
 // - sinon : JJ/MM HH:MM (évite l'ambiguïté quand la date est lointaine)
 function formatDecisionTime(confirmBy) {
@@ -272,7 +272,7 @@ export default async function handler(req, res) {
                     fontWeight: "400",
                   },
                 },
-                `Décision avant ${decisionTime}`
+                `Confirmation demandée avant ${decisionTime}`
               )
             ),
             // Ligne de séparation (même largeur que "Répondre ici" avec flèches)

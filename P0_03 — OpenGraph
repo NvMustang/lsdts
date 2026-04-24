@@ -35,7 +35,7 @@ Le texte OG est un **fallback**.
 ### OG Image (obligatoire)
 Image générée dynamiquement contenant **exclusivement** :
 - Titre de la proposition
-- “Décision avant HH:MM” (si échéance aujourd'hui/demain), sinon “Décision avant JJ/MM HH:MM”
+- “Confirmation demandée avant HH:MM” (si échéance aujourd'hui/demain), sinon “Confirmation demandée avant JJ/MM HH:MM”
 - “Répondre ici 👈”
 
 Aucun autre élément n’est autorisé.
@@ -43,7 +43,7 @@ Aucun autre élément n’est autorisé.
 ### OG Description
 - Optionnelle
 - Peut reprendre :
-  - “Décision avant HH:MM” (si échéance aujourd'hui/demain), sinon “Décision avant JJ/MM HH:MM”
+  - “Confirmation demandée avant HH:MM” (si échéance aujourd'hui/demain), sinon “Confirmation demandée avant JJ/MM HH:MM”
   - “Répondre ici 👈”
 - Ne doit jamais contenir d’information supplémentaire.
 
